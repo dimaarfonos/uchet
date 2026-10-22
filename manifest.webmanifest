@@ -1,0 +1,18 @@
+{
+  "name": "Счётчик — личные финансы",
+  "short_name": "Счётчик",
+  "description": "Личный бюджет, расходы, доходы, планы и заметки",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b1712",
+  "theme_color": "#0b1712",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
