@@ -1,18 +1,27 @@
 {
+  "id": "schetchik-finance",
   "name": "Счётчик — личные финансы",
   "short_name": "Счётчик",
-  "description": "Личный бюджет, расходы, доходы, планы и заметки",
-  "start_url": "./",
+  "description": "Личный бюджет, планы покупок и заметки. Работает офлайн и синхронизируется между устройствами.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "./?source=pwa",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
   "background_color": "#0b1712",
   "theme_color": "#0b1712",
-  "lang": "ru",
+  "categories": ["finance", "productivity"],
   "icons": [
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Голосовой ввод", "short_name": "Голос", "url": "./?action=voice", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Добавить операцию", "short_name": "Добавить", "url": "./?action=add", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Планы и покупки", "short_name": "Планы", "url": "./#shopping", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] }
   ]
 }

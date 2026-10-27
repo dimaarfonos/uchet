@@ -4,11 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1712" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Счётчик" />
+    <meta name="application-name" content="Счётчик" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="description" content="Личный бюджет, расходы, доходы, планы и заметки" />
+    <script>try { var ps = JSON.parse(localStorage.getItem('schetchik-profiles') || '[]'), aid = JSON.parse(localStorage.getItem('schetchik-active') || 'null'), ap = ps.filter(function (p) { return p.id === aid; })[0] || ps[0]; if (ap && ap.pin) document.documentElement.dataset.locked = '1'; if (window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) document.documentElement.classList.add('standalone'); } catch (e) {}</script>
     <script>try { document.documentElement.dataset.theme = localStorage.getItem('schetchik-theme') || 'dark'; } catch { document.documentElement.dataset.theme = 'dark'; }</script>
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="manifest" href="manifest.webmanifest?v=8" />
-    <link rel="stylesheet" href="styles.css?v=8" />
+    <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" id="appleIcon" href="apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest?v=9" />
+    <link rel="stylesheet" href="styles.css?v=9" />
     <title>Счётчик — личные финансы</title>
   </head>
   <body>
@@ -28,11 +38,14 @@
         </nav>
 
         <div class="sidebar-bottom">
-          <button class="settings-button" id="openData" data-open-data><span class="nav-icon" data-icon="settings"></span>Данные и копия</button>
+          <button class="settings-button install-btn" data-install hidden><span class="nav-icon" data-icon="download"></span>Установить приложение</button>
+          <button class="settings-button" id="openData" data-open-data><span class="nav-icon" data-icon="settings"></span>Профиль и облако</button>
           <div class="profile-card">
-            <div class="avatar">Д</div>
-            <div><b>Дмитрий</b><small>Личный аккаунт</small></div>
-            <button class="more-button" data-open-data aria-label="Данные и резервная копия">•••</button>
+            <button class="profile-main" type="button" data-open-data aria-label="Профиль и настройки">
+              <span class="avatar" id="profileAvatar">Г</span>
+              <span class="profile-text"><b id="profileName">Гость</b><small id="profileSub">Локальный профиль</small></span>
+            </button>
+            <button class="more-button" data-open-data aria-label="Настройки">•••</button>
           </div>
         </div>
       </aside>
@@ -41,11 +54,12 @@
         <header class="topbar">
           <div>
             <p class="eyebrow" id="todayLabel">Пятница, 23 октября</p>
-            <h1 id="pageTitle">Доброе утро, Дмитрий <span class="wave">👋</span></h1>
+            <h1 id="pageTitle">Добрый день <span class="wave">👋</span></h1>
+            <button class="sync-badge" id="syncBadge" type="button" data-status="local" aria-live="polite"><i></i><span id="syncText">Сохранено на устройстве</span></button>
           </div>
           <div class="header-actions">
             <button class="icon-button theme-toggle" id="themeToggle" aria-label="Включить тёмную тему" title="Включить тёмную тему"><span data-icon="moon"></span></button>
-            <button class="icon-button data-toggle" id="dataToggle" data-open-data aria-label="Данные и копия" title="Данные и копия"><span data-icon="settings"></span></button>
+            <button class="icon-button data-toggle" id="dataToggle" data-open-data aria-label="Профиль и облако" title="Профиль и облако"><span data-icon="settings"></span></button>
             <button class="icon-button notification" aria-label="Уведомления"><span data-icon="bell"></span><i></i></button>
             <button class="add-button" id="openTransactionModal"><span data-icon="plus"></span><span class="add-text">Добавить</span></button>
           </div>
@@ -190,16 +204,116 @@
       </form>
     </div>
 
-    <div class="modal-backdrop" id="dataModal" aria-hidden="true">
+    <div class="modal-backdrop" id="settingsModal" aria-hidden="true">
+      <div class="modal settings-modal" role="dialog" aria-labelledby="settingsTitle">
+        <div class="modal-header"><div><p class="eyebrow">Аккаунт</p><h2 id="settingsTitle">Профиль и облако</h2></div><button type="button" class="modal-close" data-close-modal aria-label="Закрыть"><span data-icon="x"></span></button></div>
+
+        <section class="set-block">
+          <div class="account-card">
+            <span class="avatar" id="setAvatar">Г</span>
+            <div class="account-text"><b id="setAccountTitle">Локальный профиль</b><small id="setAccountLine">Данные хранятся на этом устройстве</small></div>
+            <button type="button" class="voice-secondary" id="accountAction">Войти</button>
+          </div>
+          <p class="sync-detail" id="syncDetail"></p>
+          <label class="field"><span>Ваше имя</span><input id="nameInput" maxlength="30" autocomplete="nickname" placeholder="Как к вам обращаться" /></label>
+        </section>
+
+        <section class="set-block">
+          <h3 class="set-title">Профили и защита</h3>
+          <div class="profile-list" id="profileList"></div>
+          <div class="data-actions">
+            <button type="button" class="data-action" id="pinBtn"><span data-icon="lock"></span><div><b id="pinBtnTitle">Установить PIN-код</b><small>Закрывает приложение при открытии (экранная блокировка)</small></div></button>
+            <button type="button" class="data-action" id="newProfileBtn"><span data-icon="plus"></span><div><b>Новый локальный профиль</b><small>Отдельные данные, можно с PIN-кодом</small></div></button>
+          </div>
+        </section>
+
+        <details class="set-details" id="cloudDetails">
+          <summary>Облако и синхронизация</summary>
+          <p class="modal-hint">Данные синхронизируются между телефоном и ПК через ваш бесплатный проект Supabase. Без него всё работает на устройстве.</p>
+          <div class="cloud-actions"><button type="button" class="voice-secondary" id="syncNowBtn">Синхронизировать сейчас</button><button type="button" class="voice-secondary" id="signOutBtn" hidden>Выйти из облака</button></div>
+          <label class="field"><span>Supabase URL</span><input id="cloudUrl" inputmode="url" autocomplete="off" placeholder="https://xxxx.supabase.co" /></label>
+          <label class="field"><span>Supabase anon key</span><input id="cloudKey" autocomplete="off" placeholder="eyJ…" /></label>
+          <button type="button" class="voice-secondary wide" id="saveCloud">Сохранить подключение</button>
+          <p class="modal-hint">Один раз выполните SQL в Supabase (SQL Editor):</p>
+          <pre class="sql-box" id="sqlBox"></pre>
+          <button type="button" class="voice-secondary wide" id="copySql">Скопировать SQL</button>
+        </details>
+
+        <details class="set-details">
+          <summary>Перенос по коду (без сервера)</summary>
+          <p class="modal-hint">Скопируйте код на одном устройстве и вставьте на другом — данные объединятся без потери записей.</p>
+          <button type="button" class="voice-secondary wide" id="copyCode">Скопировать код этого устройства</button>
+          <label class="field"><span>Вставьте код с другого устройства</span><textarea id="transferInput" rows="3" placeholder="SC1:…"></textarea></label>
+          <button type="button" class="voice-secondary wide" id="applyCode">Объединить данные</button>
+        </details>
+
+        <section class="set-block">
+          <h3 class="set-title">Приложение и данные</h3>
+          <div class="data-actions">
+            <button type="button" class="data-action install-btn" data-install hidden><span data-icon="download"></span><div><b>Установить приложение</b><small>На экран «Домой» — откроется без браузера</small></div></button>
+            <button type="button" class="data-action" id="exportData"><span data-icon="download"></span><div><b>Скачать копию</b><small>Файл .json со всеми операциями, планами и заметками</small></div></button>
+            <button type="button" class="data-action" id="importData"><span data-icon="upload"></span><div><b>Загрузить копию</b><small>Объединится с текущими данными (можно отменить)</small></div></button>
+            <button type="button" class="data-action danger" id="resetData"><span data-icon="rotate"></span><div><b>Вернуть демо-данные</b><small>Сбросит всё к примерам (можно отменить)</small></div></button>
+          </div>
+          <input type="file" id="importFile" accept="application/json,.json" hidden />
+          <p class="version-note">Счётчик v9</p>
+        </section>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="accountModal" aria-hidden="true">
+      <form class="modal compact-modal" id="accountForm" autocomplete="on">
+        <div class="modal-header"><div><p class="eyebrow">Облако</p><h2>Вход / Регистрация</h2></div><button type="button" class="modal-close" data-close-modal aria-label="Закрыть"><span data-icon="x"></span></button></div>
+        <div class="voice-modes auth-tabs" id="authTabs" role="group" aria-label="Способ входа"><button type="button" class="voice-mode active" data-auth="signin">Вход</button><button type="button" class="voice-mode" data-auth="signup">Регистрация</button><button type="button" class="voice-mode" data-auth="link">По коду</button></div>
+        <p class="auth-note" id="authNote"></p>
+        <label class="field"><span>Email</span><input name="email" type="email" required autocomplete="email" inputmode="email" placeholder="you@mail.com" /></label>
+        <label class="field" id="authPassField"><span>Пароль</span><input name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="Минимум 6 символов" /></label>
+        <label class="field" id="authCodeField" hidden><span>Код из письма</span><input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="Код из письма" /></label>
+        <button class="modal-submit" id="authSubmit" type="submit">Войти</button>
+        <button type="button" class="voice-secondary wide" id="guestBtn">Продолжить без аккаунта</button>
+      </form>
+    </div>
+
+    <div class="modal-backdrop" id="pinModal" aria-hidden="true">
+      <form class="modal compact-modal" id="pinForm">
+        <div class="modal-header"><div><p class="eyebrow">Защита</p><h2 id="pinTitle">PIN-код</h2></div><button type="button" class="modal-close" data-close-modal aria-label="Закрыть"><span data-icon="x"></span></button></div>
+        <label class="field" id="pinCurrentField"><span>Текущий PIN</span><input name="current" type="password" inputmode="numeric" maxlength="8" autocomplete="off" /></label>
+        <label class="field" id="pinNewField"><span>Новый PIN (4–8 цифр)</span><input name="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" /></label>
+        <label class="field" id="pinRepeatField"><span>Повторите PIN</span><input name="pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" /></label>
+        <p class="modal-hint">PIN защищает экран приложения на этом устройстве. Это не шифрование данных.</p>
+        <button class="modal-submit" id="pinSubmit" type="submit">Сохранить</button>
+        <button type="button" class="voice-secondary wide danger-text" id="pinRemove" hidden>Убрать PIN-код</button>
+      </form>
+    </div>
+
+    <div class="modal-backdrop" id="profileModal" aria-hidden="true">
+      <form class="modal compact-modal" id="profileForm">
+        <div class="modal-header"><div><p class="eyebrow">Локальный профиль</p><h2>Новый профиль</h2></div><button type="button" class="modal-close" data-close-modal aria-label="Закрыть"><span data-icon="x"></span></button></div>
+        <label class="field"><span>Имя профиля</span><input name="name" required maxlength="30" placeholder="Например: Семья" /></label>
+        <label class="field"><span>PIN-код (необязательно)</span><input name="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" placeholder="4–8 цифр" /></label>
+        <button class="modal-submit" type="submit">Создать и открыть</button>
+      </form>
+    </div>
+
+    <div class="modal-backdrop" id="installModal" aria-hidden="true">
       <div class="modal compact-modal">
-        <div class="modal-header"><div><p class="eyebrow">Ваши данные</p><h2>Данные и копия</h2></div><button type="button" class="modal-close" data-close-modal aria-label="Закрыть"><span data-icon="x"></span></button></div>
-        <p class="modal-hint" style="margin-top:0">Всё хранится только в этом браузере. Скачайте копию, чтобы перенести данные на другое устройство или не потерять их.</p>
-        <div class="data-actions">
-          <button type="button" class="data-action" id="exportData"><span data-icon="download"></span><div><b>Скачать копию</b><small>Файл .json со всеми операциями, планами и заметками</small></div></button>
-          <button type="button" class="data-action" id="importData"><span data-icon="upload"></span><div><b>Загрузить копию</b><small>Заменит текущие данные (можно отменить)</small></div></button>
-          <button type="button" class="data-action danger" id="resetData"><span data-icon="rotate"></span><div><b>Вернуть демо-данные</b><small>Сбросит всё к примерам (можно отменить)</small></div></button>
+        <div class="modal-header"><div><p class="eyebrow">Установка</p><h2 id="installTitle">Как установить</h2></div><button type="button" class="modal-close" data-close-modal aria-label="Закрыть"><span data-icon="x"></span></button></div>
+        <div id="installIOS">
+          <p class="install-lead">Нажмите «Поделиться» <span class="share-glyph" aria-hidden="true">⬆</span> внизу экрана → «На экран Домой».</p>
+          <ol class="install-steps">
+            <li>Откройте приложение в <b>Safari</b> (в других браузерах iPhone установка может быть недоступна).</li>
+            <li>Нажмите кнопку <b>«Поделиться»</b> — квадрат со стрелкой вверх <svg class="share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg> в нижней панели.</li>
+            <li>Прокрутите список и выберите <b>«На экран “Домой”»</b>.</li>
+            <li>Нажмите <b>«Добавить»</b> — иконка «Счётчика» появится на экране.</li>
+          </ol>
         </div>
-        <input type="file" id="importFile" accept="application/json,.json" hidden />
+        <div id="installOther" hidden>
+          <ol class="install-steps">
+            <li><b>Android (Chrome):</b> меню ⋮ → «Установить приложение» или «Добавить на главный экран».</li>
+            <li><b>ПК (Chrome / Edge):</b> значок установки в адресной строке или меню → «Установить Счётчик».</li>
+            <li>Если пункта нет — откройте страницу по https:// и обновите её.</li>
+          </ol>
+        </div>
       </div>
     </div>
 
@@ -215,9 +329,21 @@
       </div>
     </div>
 
+    <div class="lock" id="lockScreen" role="dialog" aria-modal="true" aria-labelledby="lockName">
+      <form class="lock-card" id="lockForm">
+        <span class="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2.5 27.5 9v14L16 29.5 4.5 23V9L16 2.5Z"/><path d="M20.8 11.8c-1-1-2.6-1.6-4.5-1.6-2.4 0-4 1.2-4 3 0 4.6 8.6 1.9 8.6 6.4 0 1.9-1.9 3.2-4.5 3.2-2.1 0-3.9-.7-5.2-1.9M16.5 7.8v17"/></svg></span>
+        <h2 id="lockName">Счётчик</h2>
+        <p>Введите PIN-код</p>
+        <input id="lockPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" aria-label="PIN-код" />
+        <p class="lock-error" id="lockError" role="alert"></p>
+        <button class="modal-submit" type="submit">Открыть</button>
+        <button type="button" class="lock-link" id="lockForgot">Забыли PIN?</button>
+      </form>
+    </div>
+
     <button class="voice-fab" id="voiceFab" aria-label="Голосовой ввод" title="Сказать план, трату или заметку"><span data-icon="mic"></span></button>
 
     <div class="toast" id="toast"><span data-icon="check"></span><span id="toastText">Сохранено</span><button type="button" class="toast-action" id="toastUndo" hidden>Отменить</button></div>
-    <script src="app.js?v=8"></script>
+    <script src="app.js?v=9"></script>
   </body>
 </html>
