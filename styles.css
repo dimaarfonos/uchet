@@ -425,3 +425,57 @@ html[data-theme="light"] article:has(> [data-icon="sparkles"]) p { color:#33433c
 .transaction:nth-child(n+14),.note-card:nth-child(n+10) { content-visibility:auto; }
 .transaction:nth-child(n+14) { contain-intrinsic-size:auto 44px; } .note-card:nth-child(n+10) { contain-intrinsic-size:auto 90px; }
 .plan-row:nth-child(n+16),.shopping-item:nth-child(n+16) { content-visibility:auto; contain-intrinsic-size:auto 52px; }
+
+/* ======================================================================
+   v10
+   ====================================================================== */
+[hidden] { display:none !important; }
+
+/* На страницах «Планы» и «Заметки» свои кнопки добавления — общую «Добавить» в шапке прячем */
+body[data-view="shopping"] .topbar .add-button,body[data-view="notes"] .topbar .add-button { display:none; }
+
+/* Обзор → Операции */
+.stat-link { cursor:pointer; transition:border-color .16s, transform .16s; }
+.stat-link:hover { border-color:#9cc7a6; transform:translateY(-1px); }
+.stat-link:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }
+.intro-with-back { display:flex; align-items:center; gap:12px; min-width:0; }
+.back-btn { display:grid; place-items:center; flex:0 0 auto; width:40px; height:40px; border:1px solid var(--line); border-radius:12px; color:var(--ink); background:var(--surface-2); }
+.back-btn svg { width:18px; height:18px; transform:rotate(180deg); }
+.back-btn:hover { background:var(--mint); }
+
+/* Вход */
+.auth-links { display:flex; flex-wrap:wrap; justify-content:center; gap:2px 14px; margin-top:6px; }
+.auth-links button { min-height:40px; padding:0 4px; color:var(--text-2); background:transparent; font-size:13px; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+.auth-links button:hover { color:var(--ink); }
+#accountForm .field input[readonly] { opacity:.75; }
+
+/* Настройки ИИ */
+.check-row { display:flex; align-items:center; gap:10px; min-height:44px; color:var(--ink); font-size:13px; font-weight:600; cursor:pointer; }
+.check-row input { flex:0 0 auto; width:20px; height:20px; accent-color:#3f9d68; }
+.ai-link { display:inline-flex; align-items:center; min-height:40px; padding:0 4px; color:var(--text-2); font-size:13px; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+.note-action.ai-btn { color:#6c56b8; } html[data-theme="dark"] .note-action.ai-btn { color:#cdbcff; }
+
+/* Ветка диалога с помощником в заметке */
+.ai-thread { display:grid; gap:8px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); }
+.ai-msg { display:flex; gap:8px; align-items:flex-start; font-size:13px; line-height:1.5; }
+.ai-msg.me { justify-content:flex-end; }
+.ai-msg.me .ai-text { max-width:88%; padding:8px 12px; border-radius:14px 14px 4px 14px; color:var(--ink); background:var(--chip); }
+.ai-msg.ai .ai-text { flex:1; min-width:0; padding:9px 12px; border-radius:4px 14px 14px 14px; color:var(--ink); background:#f1ecfb; overflow-wrap:anywhere; }
+html[data-theme="dark"] .ai-msg.ai .ai-text { background:#241f38; color:#ece8fb; }
+.ai-badge { flex:0 0 auto; margin-top:6px; padding:2px 6px; border-radius:6px; color:#4b3a91; background:#ddd2fb; font:800 10px/1.2 "Manrope",sans-serif; letter-spacing:.04em; }
+html[data-theme="dark"] .ai-badge { color:#ece6ff; background:#4b3f86; }
+.ai-typing span { animation:ai-dot 1.2s infinite; } .ai-typing span:nth-child(2) { animation-delay:.2s; } .ai-typing span:nth-child(3) { animation-delay:.4s; }
+@keyframes ai-dot { 0%,60%,100% { opacity:.25; } 30% { opacity:1; } }
+.ai-error { padding:8px 12px; border-radius:10px; color:#9b2c24; background:#fde7e4; font-size:12px; font-weight:600; }
+html[data-theme="dark"] .ai-error { color:#ffd0c9; background:#4a2824; }
+.ai-error button { margin-left:6px; min-height:32px; padding:0 8px; color:inherit; background:transparent; font-weight:800; text-decoration:underline; }
+.ai-ask { display:flex; gap:8px; }
+.ai-ask input { flex:1; min-width:0; height:42px; padding:0 14px; border:1px solid var(--line); border-radius:12px; color:var(--ink); background:var(--surface-2); font:inherit; font-size:13px; }
+.ai-ask input:focus { outline:0; border-color:#8c78d8; box-shadow:0 0 0 3px rgba(140,120,216,.2); }
+.ai-ask button { display:grid; place-items:center; flex:0 0 42px; height:42px; border-radius:12px; color:#fff; background:#6c56b8; }
+.ai-ask button:disabled,.ai-ask input:disabled { opacity:.55; }
+.ai-ask button svg { width:18px; height:18px; }
+@media (max-width:760px) { .ai-ask input { font-size:16px; } }
+/* Заголовок страницы уже есть в шапке — не дублируем его на «Планах» и «Заметках» */
+#shopping .page-intro > div:first-child,#notes .page-intro > div:first-child { display:none; }
+#shopping .page-intro,#notes .page-intro { justify-content:flex-end; margin-bottom:14px; }

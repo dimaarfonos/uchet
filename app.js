@@ -102,9 +102,9 @@ const clone = data => JSON.parse(JSON.stringify(data));
    ===================================================================== */
 
 /* ---- Облако: вставьте свои значения сюда ИЛИ в окне «Профиль и облако» ---- */
-const SUPABASE_URL = '';       // например: 'https://abcdxyz.supabase.co'
-const SUPABASE_ANON_KEY = '';  // публичный ключ anon / public (Project Settings → API)
-const APP_VERSION = 9;
+const SUPABASE_URL = 'https://thxaxrnbprlgufxvilxy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_-u4QG3A9BjTwsOv4wqsFCg_2cqXj76I';  // публичный (publishable) ключ — его можно хранить в приложении
+const APP_VERSION = 10;
 
 const COLLECTIONS = ['transactions', 'shopping', 'plans', 'notes'];
 const SCALARS = ['budget', 'userName', 'theme'];
@@ -262,7 +262,8 @@ const cloud = {
     const { url, key } = this.cfg();
     let response;
     try {
-      response = await fetch(url + path, { method, headers:{ apikey:key, Authorization:'Bearer ' + (token || key), 'Content-Type':'application/json', ...headers }, body:body === undefined ? undefined : JSON.stringify(body) });
+      const head = { apikey:key, 'Content-Type':'application/json', ...headers }; if (token) head.Authorization = 'Bearer ' + token;   // publishable-ключ не JWT: без входа заголовок Authorization не отправляем
+      response = await fetch(url + path, { method, headers:head, body:body === undefined ? undefined : JSON.stringify(body) });
     } catch { const error = new Error('network'); error.code = 'network'; throw error; }
     const text = await response.text(); let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
     if (!response.ok) { const error = new Error((data && (data.error_description || data.msg || data.message || data.error)) || ('HTTP ' + response.status)); error.status = response.status; error.data = data; throw error; }
@@ -304,7 +305,7 @@ function authMessage(error) {
 }
 
 let syncing = false, syncQueued = false, syncTimer = null, syncStatus = 'local', lastSyncAt = 0;
-function scheduleSync(delay = 1500) { clearTimeout(syncTimer); if (!cloud.configured() || !cloud.session) { setSyncStatus(cloud.configured() ? 'auth' : 'local'); return; } if (!navigator.onLine) { setSyncStatus('offline'); return; } setSyncStatus('pending'); syncTimer = setTimeout(syncNow, delay); }
+function scheduleSync(delay = 700) { clearTimeout(syncTimer); if (!cloud.configured() || !cloud.session) { setSyncStatus(cloud.configured() ? 'auth' : 'local'); return; } if (!navigator.onLine) { setSyncStatus('offline'); return; } setSyncStatus('pending'); syncTimer = setTimeout(syncNow, delay); }
 async function syncNow() {
   clearTimeout(syncTimer);
   if (!cloud.configured()) return setSyncStatus('local');
@@ -743,7 +744,7 @@ function onStateReplaced() {
 
 /* ---- Настройки ---- */
 function renderSettings() {
-  updateProfileUI();
+  updateProfileUI(); renderAISettings();
   qs('#nameInput').value = state.userName;
   const cfg = LS.get('schetchik-cloud', {}) || {}; qs('#cloudUrl').value = cfg.url || SUPABASE_URL; qs('#cloudKey').value = cfg.key || SUPABASE_ANON_KEY;
   qs('#sqlBox').textContent = SUPABASE_SQL;
@@ -751,7 +752,7 @@ function renderSettings() {
   qs('#profileList').innerHTML = profiles.map(p => `<div class="profile-row ${p.id === profileId ? 'current' : ''}"><span class="avatar">${escapeHtml(initialLetter(p.name))}</span><div class="profile-text"><b>${escapeHtml(p.name)}${p.pin ? ' 🔒' : ''}</b><small>${escapeHtml(p.email || 'Локальный профиль')}</small></div>${p.id === profileId ? '<span class="current-chip">Текущий</span>' : `<button type="button" class="profile-open" data-switch-profile="${p.id}">Открыть</button>`}${profiles.length > 1 ? `<button type="button" class="profile-del" data-del-profile="${p.id}" aria-label="Удалить профиль ${escapeHtml(p.name)}" title="Удалить профиль">${icons.x}</button>` : ''}</div>`).join('');
   setSyncStatus(syncStatus, syncDetail);
 }
-function openSettings(section) { renderSettings(); if (section === 'cloud') qs('#cloudDetails').open = true; openModal('settingsModal'); }
+function openSettings(section) { renderSettings(); if (section === 'cloud') qs('#cloudDetails').open = true; if (section === 'ai') qs('#aiDetails').open = true; openModal('settingsModal'); }
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch { /* fallback */ }
   const area = document.createElement('textarea'); area.value = text; area.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(area); area.select();
@@ -767,27 +768,37 @@ function deleteProfile(id) {
   if (id === profileId) switchProfile(profiles[0].id); else renderSettings();
 }
 
-/* ---- Вход / регистрация ---- */
-let authMode = 'signin', linkSent = false;
-const AUTH_NOTES = {
-  signin:'Войдите, чтобы данные появились на всех ваших устройствах.',
-  signup:'Создайте аккаунт — он нужен только для синхронизации. Данные и так сохраняются на устройстве.',
-  link:'Мы отправим на почту ссылку и код. Откройте ссылку на этом устройстве или введите код ниже.'
+/* ---- Вход: по умолчанию только email + код из письма ---- */
+let authMode = 'code', codeSent = false;
+const AUTH_TEXT = {
+  code:{ title:'Вход по email', note:'Введите почту — пришлём код. Аккаунт создастся сам.', submit:'Получить код' },
+  signin:{ title:'Вход с паролем', note:'', submit:'Войти' },
+  signup:{ title:'Новый аккаунт', note:'Придумайте пароль от 6 символов.', submit:'Создать аккаунт' }
 };
-function setAuthMode(mode) {
-  authMode = mode; linkSent = false;
-  qsa('[data-auth]').forEach(b => b.classList.toggle('active', b.dataset.auth === mode));
-  const form = qs('#accountForm').elements;
-  qs('#authPassField').hidden = mode === 'link'; form.password.required = mode !== 'link';
-  form.password.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
-  qs('#authCodeField').hidden = true; form.code.required = false;
-  qs('#authSubmit').textContent = mode === 'signin' ? 'Войти' : mode === 'signup' ? 'Создать аккаунт' : 'Отправить ссылку и код';
-  qs('#authNote').textContent = cloud.configured() ? AUTH_NOTES[mode] : 'Облако пока не подключено. Откройте «Профиль и облако» → «Облако и синхронизация» и вставьте URL и ключ Supabase.';
-  qs('#authNote').classList.toggle('warn', !cloud.configured());
+const authLinkButtons = {
+  code:[['signin', 'Войти с паролем']],
+  signin:[['code', 'Войти по коду'], ['signup', 'Создать аккаунт с паролем']],
+  signup:[['code', 'Войти по коду']]
+};
+function renderAuthLinks() {
+  const links = codeSent ? [['resend', 'Отправить код ещё раз'], ['code', 'Другой email']] : authLinkButtons[authMode];
+  qs('#authLinks').innerHTML = links.map(([mode, label]) => `<button type="button" data-auth-mode="${mode}">${label}</button>`).join('');
 }
-function openAccount(mode = 'signin') {
+function setAuthMode(mode) {
+  authMode = mode; codeSent = false;
+  const form = qs('#accountForm').elements;
+  qs('#accountTitle').textContent = AUTH_TEXT[mode].title;
+  qs('#authPassField').hidden = mode === 'code'; form.password.required = mode !== 'code';
+  form.password.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+  qs('#authCodeField').hidden = true; form.code.required = false; form.email.readOnly = false;
+  qs('#authSubmit').textContent = AUTH_TEXT[mode].submit;
+  const note = cloud.configured() ? AUTH_TEXT[mode].note : 'Облако не подключено: укажите адрес проекта и ключ в настройках.';
+  qs('#authNote').textContent = note; qs('#authNote').hidden = !note; qs('#authNote').classList.toggle('warn', !cloud.configured());
+  renderAuthLinks();
+}
+function openAccount(mode = 'code') {
   if (!cloud.configured()) { openSettings('cloud'); toast('Сначала подключите Supabase (URL и ключ)'); return; }
-  closeModals(); qs('#accountForm').reset(); setAuthMode(mode); openModal('accountModal');
+  closeModals(); qs('#accountForm').reset(); setAuthMode(mode); LS.set('schetchik-welcomed', 1); openModal('accountModal');
 }
 async function afterAuth(session) {
   const profile = getProfile();
@@ -891,19 +902,19 @@ document.addEventListener('touchend', () => {
 document.addEventListener('submit', event => {
   const form = event.target; if (!(form instanceof HTMLFormElement)) return;
   if (form.dataset.busy) { event.preventDefault(); event.stopImmediatePropagation(); return; }
-  form.dataset.busy = '1'; setTimeout(() => { delete form.dataset.busy; }, 700);
+  form.dataset.busy = '1'; setTimeout(() => { delete form.dataset.busy; }, 450);
 }, true);
 
 /* ---- Обработчики интерфейса v9 ---- */
 function wireV9() {
   qs('#syncBadge').addEventListener('click', () => {
     if (!cloud.configured()) return openSettings('cloud');
-    if (!cloud.session) return openAccount('signin');
+    if (!cloud.session) return openAccount('code');
     syncNow().then(() => { if (syncStatus === 'error') toast(syncDetail || 'Ошибка облака'); });
   });
   async function signOutCloud() { await cloud.signOut(); updateProfileUI(); setSyncStatus(cloud.configured() ? 'auth' : 'local'); toast('Вы вышли из облака. Данные остались на устройстве'); }
-  qs('#accountAction').addEventListener('click', () => { if (cloud.session) signOutCloud(); else openAccount('signin'); });
-  qs('#syncNowBtn').addEventListener('click', () => { if (!cloud.configured()) return toast('Сначала подключите Supabase'); if (!cloud.session) return openAccount('signin'); syncNow(); });
+  qs('#accountAction').addEventListener('click', () => { if (cloud.session) signOutCloud(); else openAccount('code'); });
+  qs('#syncNowBtn').addEventListener('click', () => { if (!cloud.configured()) return toast('Сначала подключите Supabase'); if (!cloud.session) return openAccount('code'); syncNow(); });
   qs('#signOutBtn').addEventListener('click', signOutCloud);
   qs('#saveCloud').addEventListener('click', () => {
     const url = qs('#cloudUrl').value.trim(), key = qs('#cloudKey').value.trim();
@@ -925,24 +936,35 @@ function wireV9() {
     getProfile().name = name; saveProfiles(); commit('Имя сохранено', () => { state.userName = name; }, { undo:false }); updateProfileUI();
     if (activePageId() === 'dashboard') qs('#pageTitle').innerHTML = greeting();
   });
-  qs('#authTabs').addEventListener('click', event => { const b = event.target.closest('[data-auth]'); if (b) setAuthMode(b.dataset.auth); });
-  qs('#guestBtn').addEventListener('click', () => { closeModals(); toast('Работаем без аккаунта — данные хранятся на устройстве'); });
+  qs('#authLinks').addEventListener('click', async event => {
+    const button = event.target.closest('[data-auth-mode]'); if (!button) return;
+    const mode = button.dataset.authMode; const email = qs('#accountForm').elements.email.value;
+    if (mode === 'resend') {
+      try { await cloud.sendLink(email.trim().toLowerCase()); toast('Код отправлен ещё раз'); } catch (error) { toast(authMessage(error)); }
+      return;
+    }
+    setAuthMode(mode); qs('#accountForm').elements.email.value = email;
+  });
+  qs('#guestBtn').addEventListener('click', () => { closeModals(); toast('Без аккаунта: данные хранятся только на этом устройстве'); });
   qs('#accountForm').addEventListener('submit', async event => {
     event.preventDefault(); if (!validateForm(event.target)) return;
     const data = new FormData(event.target); const email = String(data.get('email')).trim().toLowerCase(); const password = String(data.get('password') || '');
     const button = qs('#authSubmit'); const label = button.textContent; button.disabled = true; button.textContent = 'Подождите…';
+    let restore = true;
     try {
       if (authMode === 'signin') await afterAuth(await cloud.signIn(email, password));
       else if (authMode === 'signup') {
         const session = await cloud.signUp(email, password);
-        if (session) await afterAuth(session); else { toast('Проверьте почту: подтвердите адрес, затем войдите'); setAuthMode('signin'); }
-      } else if (!linkSent) {
-        await cloud.sendLink(email); linkSent = true; qs('#authCodeField').hidden = false; qs('#accountForm').elements.code.required = true;
-        qs('#authSubmit').textContent = 'Войти по коду'; qs('#authNote').textContent = 'Письмо отправлено. Откройте ссылку на этом устройстве или введите код из письма.';
-        button.disabled = false; qs('#accountForm').elements.code.focus(); return;
+        if (session) await afterAuth(session); else { toast('Проверьте почту: подтвердите адрес и войдите'); setAuthMode('signin'); restore = false; }
+      } else if (!codeSent) {
+        await cloud.sendLink(email); codeSent = true; restore = false;
+        const form = qs('#accountForm').elements; form.email.readOnly = true; qs('#authCodeField').hidden = false; form.code.required = true;
+        button.textContent = 'Войти'; qs('#authNote').hidden = false; qs('#authNote').textContent = `Код отправлен на ${email}. Введите его ниже.`;
+        renderAuthLinks(); form.code.focus();
       } else await afterAuth(await cloud.verifyCode(email, String(data.get('code'))));
-    } catch (error) { toast(authMessage(error)); button.textContent = label; }
-    button.disabled = false; if (button.textContent === 'Подождите…') button.textContent = label;
+    } catch (error) { toast(authMessage(error)); }
+    button.disabled = false; if (restore && button.textContent === 'Подождите…') button.textContent = label;
+    delete event.target.dataset.busy;
   });
   qs('#pinBtn').addEventListener('click', openPinModal);
   qs('#newProfileBtn').addEventListener('click', () => { qs('#profileForm').reset(); openModal('profileModal'); });
@@ -983,12 +1005,13 @@ function wireV9() {
   window.addEventListener('online', () => scheduleSync(300));
   window.addEventListener('offline', () => setSyncStatus('offline'));
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (document.hidden) { hiddenAt = Date.now(); if (syncStatus === 'pending') syncNow(); return; }
     refreshClock();
     if (getProfile().pin && hiddenAt && Date.now() - hiddenAt > 120000) lockApp();
     scheduleSync(200);
   });
-  setInterval(() => { if (!document.hidden) syncNow(); }, 45000);
+  window.addEventListener('pagehide', () => { if (syncStatus === 'pending') syncNow(); });
+  setInterval(() => { if (!document.hidden) syncNow(); }, 30000);
   setInterval(() => { if (!document.hidden) refreshClock(); }, 60000);
 }
 
@@ -1008,6 +1031,130 @@ async function recoverFromBackup() {
     if (canon(merged) !== canon(state)) { applyMerged(merged); toast('Данные восстановлены из резервной копии браузера'); }
   }
   idbSet(stateKey(), state);
+}
+
+/* =====================================================================
+   v10 · ИИ-ПОМОЩНИК В ЗАМЕТКАХ (Google Gemini)
+   Ключ хранится только на этом устройстве (localStorage), в облако и в копии данных не попадает.
+   Вместе с вопросом уходит краткая сводка финансов из приложения — база данных и её ключи ИИ не передаются.
+   ===================================================================== */
+const AI_DEFAULT_MODEL = 'gemini-3.5-flash';
+const AI_SYSTEM = 'Ты — личный помощник по финансам и решениям в приложении «Счётчик». Пользователь пишет заметки и идеи. Отвечай по-русски, дружелюбно и кратко (до 120 слов). Помогай принять решение: оцени идею с учётом его бюджета, планов и приоритетов, назови плюсы и риски, предложи конкретный следующий шаг. Опирайся на цифры из данных; если данных не хватает — так и скажи, ничего не выдумывай. Не обещай доходность и не давай юридических гарантий. Без вступлений и без пересказа заметки.';
+const aiCfg = () => ({ key:'', model:AI_DEFAULT_MODEL, auto:true, context:true, ...(LS.get('schetchik-ai', {}) || {}) });
+const aiBusy = new Set(), aiDrafts = {}, aiErrors = {};
+
+/* Сводка финансов для ИИ: баланс, месяц, категории, планы по приоритету, покупки, последние операции */
+function buildFinanceContext() {
+  const all = liveTx(); const now = new Date(); const monthKey = isoDate(now).slice(0, 7);
+  const month = all.filter(t => t.date.startsWith(monthKey));
+  const income = sum(month.filter(t => t.type === 'income')), expense = sum(month.filter(t => t.type === 'expense'));
+  const balance = sum(all.filter(t => t.type === 'income')) - sum(all.filter(t => t.type === 'expense'));
+  const byCategory = {}; month.filter(t => t.type === 'expense').forEach(t => { byCategory[t.category] = (byCategory[t.category] || 0) + t.amount; });
+  const categories = Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([c, v]) => `${c}: ${fmt(v)}`).join('; ');
+  const previous = [1, 2, 3].map(offset => {
+    const d = new Date(now.getFullYear(), now.getMonth() - offset, 1, 12); const key = isoDate(d).slice(0, 7); const m = all.filter(t => t.date.startsWith(key));
+    return `${key}: доходы ${fmt(sum(m.filter(t => t.type === 'income')))}, расходы ${fmt(sum(m.filter(t => t.type === 'expense')))}`;
+  }).join('; ');
+  const recent = all.slice().sort((a, b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 12)
+    .map(t => `${t.date} ${t.type === 'income' ? '+' : '−'}${fmt(t.amount)} ${t.title} (${t.category})`).join('\n');
+  const plans = activePlans().map((p, i) => `${i + 1}. ${p.title} — ${fmt(p.amount)}, ${p.kind === 'purchase' ? 'покупка' : 'платёж'}, срок ${p.date} (через ${daysUntil(p.date)} дн.), ${p.category}`).join('\n') || 'нет';
+  const shopping = live(state.shopping).filter(i => !i.done).slice(0, 15).map(i => `${i.title}${i.amount ? ' — ' + fmt(i.amount) : ''}${i.priority === 'high' ? ' (важно)' : ''}`).join('; ') || 'нет';
+  return `Сегодня: ${isoDate(now)}\nБаланс (за всё время): ${fmt(balance)}\nЭтот месяц: доходы ${fmt(income)}, расходы ${fmt(expense)}; бюджет месяца ${fmt(state.budget)} (потрачено ${state.budget ? Math.round(expense / state.budget * 100) : 0}%)\nРасходы по категориям: ${categories || 'нет'}\nПрошлые месяцы: ${previous}\nПланы по приоритету (1 — самый важный):\n${plans}\nСписок покупок: ${shopping}\nПоследние операции:\n${recent || 'нет'}`;
+}
+
+async function callGemini(contents, system) {
+  const cfg = aiCfg(); if (!cfg.key) throw Object.assign(new Error('no key'), { code:'nokey' });
+  let response;
+  try {
+    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model || AI_DEFAULT_MODEL)}:generateContent`, {
+      method:'POST', headers:{ 'Content-Type':'application/json', 'x-goog-api-key':cfg.key },
+      body:JSON.stringify({ systemInstruction:{ parts:[{ text:system }] }, contents, generationConfig:{ temperature:0.7, maxOutputTokens:1400 } })
+    });
+  } catch { throw Object.assign(new Error('network'), { code:'network' }); }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) { const error = new Error((data && data.error && data.error.message) || ('HTTP ' + response.status)); error.status = response.status; throw error; }
+  const parts = (((data || {}).candidates || [])[0] || {}).content;
+  const text = ((parts && parts.parts) || []).map(p => p.text || '').join('').trim();
+  if (!text) throw Object.assign(new Error('empty'), { code:'empty', blocked:!!(data && data.promptFeedback && data.promptFeedback.blockReason) });
+  return text;
+}
+function aiErrorMessage(error) {
+  if (error.code === 'nokey') return 'Добавьте ключ Gemini в настройках.';
+  if (error.code === 'network') return 'Нет связи с Gemini. Проверьте интернет.';
+  if (error.code === 'empty') return error.blocked ? 'Gemini отказался отвечать на этот текст.' : 'Gemini вернул пустой ответ — попробуйте ещё раз.';
+  if (error.status === 400 && /API key/i.test(error.message)) return 'Ключ Gemini не подошёл — проверьте, что он скопирован целиком.';
+  if (error.status === 400) return 'Gemini не принял запрос: ' + error.message.slice(0, 120);
+  if (error.status === 403) return 'Нет доступа: ключ ограничен или Gemini API выключен для проекта.';
+  if (error.status === 404) return 'Модель не найдена — измените название модели в настройках помощника.';
+  if (error.status === 429) return 'Лимит запросов Gemini исчерпан — подождите минуту.';
+  return 'Ошибка Gemini: ' + (error.message || error.status || '').toString().slice(0, 120);
+}
+
+function aiFormat(text) {
+  return escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/^[*-]\s+/gm, '• ').replace(/\n/g, '<br>');
+}
+function aiThreadHTML(item) {
+  const thread = item.thread || []; const busy = aiBusy.has(item.id); const error = aiErrors[item.id];
+  if (!thread.length && !busy && !error) return '';
+  const messages = thread.map(m => `<div class="ai-msg ${m.r}">${m.r === 'ai' ? '<span class="ai-badge">ИИ</span>' : ''}<div class="ai-text">${aiFormat(m.t)}</div></div>`).join('');
+  const typing = busy ? '<div class="ai-msg ai"><span class="ai-badge">ИИ</span><div class="ai-text ai-typing">Думаю<span>.</span><span>.</span><span>.</span></div></div>' : '';
+  const failure = error ? `<div class="ai-error">${escapeHtml(error)} <button type="button" data-ai-retry="${item.id}">Повторить</button></div>` : '';
+  const form = `<form class="ai-ask" data-ai-form="${item.id}"><input name="q" placeholder="Спросить помощника…" value="${escapeHtml(aiDrafts[item.id] || '')}" autocomplete="off" enterkeyhint="send" ${busy ? 'disabled' : ''} /><button type="submit" aria-label="Отправить" ${busy ? 'disabled' : ''}>${icons['arrow-up']}</button></form>`;
+  return `<div class="ai-thread">${messages}${typing}${failure}${form}</div>`;
+}
+function renderNotesIfActive() { if (activePageId() === 'notes') renderNotes(); }
+
+async function askAI(noteId, question = '') {
+  const cfg = aiCfg();
+  if (!cfg.key) { openSettings('ai'); toast('Добавьте ключ Gemini, чтобы помощник заработал'); return; }
+  const note = state.notes.find(n => n.id === noteId && !n.deletedAt); if (!note || aiBusy.has(noteId)) return;
+  if (question) { note.thread = [...(note.thread || []), { r:'me', t:question, at:Date.now() }]; save(); }
+  aiBusy.add(noteId); delete aiErrors[noteId]; renderNotesIfActive();
+  const system = AI_SYSTEM + (cfg.context ? '\n\nДанные пользователя из приложения:\n' + buildFinanceContext() : '\n\n(Финансовые данные пользователя недоступны — отвечай только по тексту заметки.)');
+  const thread = note.thread || [];
+  const raw = [{ role:'user', text:`Моя заметка:\n${note.text}` + (thread.length ? '' : '\n\nПрокомментируй и помоги принять решение.') }, ...thread.map(m => ({ role:m.r === 'ai' ? 'model' : 'user', text:m.t }))];
+  const contents = []; raw.forEach(m => { const last = contents[contents.length - 1]; if (last && last.role === m.role) last.parts[0].text += '\n\n' + m.text; else contents.push({ role:m.role, parts:[{ text:m.text }] }); });
+  try {
+    const reply = await callGemini(contents, system);
+    const fresh = state.notes.find(n => n.id === noteId && !n.deletedAt);
+    if (fresh) { fresh.thread = [...(fresh.thread || []), { r:'ai', t:reply, at:Date.now() }]; save(); }
+    if (activePageId() !== 'notes') toast('Помощник ответил на заметку');
+  } catch (error) { aiErrors[noteId] = aiErrorMessage(error); }
+  aiBusy.delete(noteId); renderNotesIfActive();
+}
+function maybeAutoAI(noteId) {
+  const cfg = aiCfg(); if (!cfg.key || !cfg.auto) return;
+  setTimeout(() => { const note = state.notes.find(n => n.id === noteId && !n.deletedAt); if (note && note.text.length >= 15 && !(note.thread || []).length) askAI(noteId); }, 250);
+}
+
+/* ---- Настройки помощника ---- */
+function renderAISettings() {
+  const c = aiCfg(); qs('#aiKey').value = c.key; qs('#aiModel').value = c.model; qs('#aiAuto').checked = c.auto; qs('#aiContext').checked = c.context;
+}
+function wireAI() {
+  const store = () => LS.set('schetchik-ai', { key:qs('#aiKey').value.trim(), model:qs('#aiModel').value.trim() || AI_DEFAULT_MODEL, auto:qs('#aiAuto').checked, context:qs('#aiContext').checked });
+  ['#aiKey', '#aiModel', '#aiAuto', '#aiContext'].forEach(sel => qs(sel).addEventListener('change', store));
+  qs('#aiTest').addEventListener('click', async () => {
+    store(); const button = qs('#aiTest'); button.disabled = true;
+    try { await callGemini([{ role:'user', parts:[{ text:'Ответь одним словом: готов?' }] }], 'Отвечай одним словом по-русски.'); toast('Помощник подключён ✓'); }
+    catch (error) { toast(aiErrorMessage(error)); }
+    button.disabled = false;
+  });
+  qs('#aiClear').addEventListener('click', () => { LS.del('schetchik-ai'); renderAISettings(); toast('Ключ удалён с этого устройства'); });
+  document.addEventListener('input', event => { const form = event.target.closest && event.target.closest('[data-ai-form]'); if (form) aiDrafts[form.dataset.aiForm] = event.target.value; });
+  document.addEventListener('submit', event => {
+    const form = event.target.closest && event.target.closest('[data-ai-form]'); if (!form) return;
+    event.preventDefault(); const question = form.elements.q.value.trim(); if (!question) return;
+    delete aiDrafts[form.dataset.aiForm]; askAI(form.dataset.aiForm, question);
+  });
+  document.addEventListener('click', event => {
+    let el;
+    if ((el = event.target.closest('[data-ai-note]'))) {
+      const note = state.notes.find(n => n.id === el.dataset.aiNote);
+      if (note && (note.thread || []).length) { const input = qs(`[data-ai-form="${note.id}"] input`); if (input) input.focus(); } else askAI(el.dataset.aiNote);
+    }
+    if ((el = event.target.closest('[data-ai-retry]'))) askAI(el.dataset.aiRetry);
+  });
 }
 
 /* ===== v9: рендер только активной вкладки ===== */
@@ -1075,7 +1222,8 @@ function movePlan(id, direction) {
 function activatePage(page) {
   const safe = /^[a-z]+$/.test(page || '') && qs(`#${page}`) && qs(`#${page}`).classList.contains('page') ? page : 'dashboard';
   qsa('.page').forEach(el => el.classList.toggle('active', el.id === safe));
-  qsa('[data-page]').forEach(el => el.classList.toggle('active', el.dataset.page === safe));
+  document.body.dataset.view = safe;
+  qsa('[data-page]').forEach(el => el.classList.toggle('active', el.dataset.page === (safe === 'transactions' ? 'dashboard' : safe)));
   const titles = { dashboard:greeting(), transactions:'Все операции', budget:'Ваш бюджет', shopping:'Планы и покупки', notes:'Заметки' };
   qs('#pageTitle').innerHTML = titles[safe]; renderActive(); window.scrollTo({ top:0, behavior:'smooth' });
 }
@@ -1241,7 +1389,7 @@ function noteBodyHTML(text) {
 }
 function noteHTML(item) {
   const mood = noteMoods[item.mood] || noteMoods.calm;
-  return `<article class="note-card ${item.pinned ? 'pinned':''}"><div class="note-card-top"><span class="note-mood ${mood.className}" title="${mood.label}">${mood.icon}</span><span class="note-date">${item.time ? item.time + ' · ' : ''}${mood.label}</span><div class="note-actions"><button class="note-action ${item.pinned ? 'on':''}" type="button" data-pin-note="${item.id}" aria-label="${item.pinned ? 'Открепить' : 'Закрепить'}" title="${item.pinned ? 'Открепить' : 'Закрепить сверху'}">${icons.pin}</button><button class="note-action" type="button" data-edit-note="${item.id}" aria-label="Редактировать заметку" title="Редактировать">${icons.edit}</button><button class="note-action note-delete" type="button" data-delete-note="${item.id}" aria-label="Удалить заметку" title="Удалить">${icons.x}</button></div></div><p>${noteBodyHTML(item.text)}</p></article>`;
+  return `<article class="note-card ${item.pinned ? 'pinned':''}"><div class="note-card-top"><span class="note-mood ${mood.className}" title="${mood.label}">${mood.icon}</span><span class="note-date">${item.time ? item.time + ' · ' : ''}${mood.label}</span><div class="note-actions"><button class="note-action ai-btn" type="button" data-ai-note="${item.id}" aria-label="Спросить помощника" title="Спросить ИИ-помощника">${icons.sparkles}</button><button class="note-action ${item.pinned ? 'on':''}" type="button" data-pin-note="${item.id}" aria-label="${item.pinned ? 'Открепить' : 'Закрепить'}" title="${item.pinned ? 'Открепить' : 'Закрепить сверху'}">${icons.pin}</button><button class="note-action" type="button" data-edit-note="${item.id}" aria-label="Редактировать заметку" title="Редактировать">${icons.edit}</button><button class="note-action note-delete" type="button" data-delete-note="${item.id}" aria-label="Удалить заметку" title="Удалить">${icons.x}</button></div></div><p>${noteBodyHTML(item.text)}</p>${aiThreadHTML(item)}</article>`;
 }
 function noteStreak() {
   const days = new Set(live(state.notes).map(n => n.date)); let streak = 0; const cursor = new Date(); cursor.setHours(12, 0, 0, 0);
@@ -1320,7 +1468,7 @@ function validateForm(form) {
       const field = control.closest('.field'); field?.classList.add('invalid');
       const label = (field?.querySelector('span')?.textContent || 'поле').split(',')[0].replace('?', '').trim();
       toast(control.type === 'number' && value ? `«${label}» должна быть больше нуля` : `Заполните поле «${label}»`);
-      control.focus(); return false;
+      control.focus(); delete form.dataset.busy; return false;
     }
   }
   return true;
@@ -1517,7 +1665,9 @@ function confirmVoice() {
   } else if (p.intent === 'note') {
     if (noteOpen) { closeVoice(); const field = qs('#noteText'); field.value = field.value ? `${field.value.trim()} ${p.text}` : p.text; qs('#noteForm').elements.mood.value = p.mood; toast('Текст добавлен в заметку'); return; }
     closeModals();
-    commit('Заметка сохранена', () => state.notes.unshift({ id:'n' + Date.now(), createdAt:Date.now(), text:p.text, mood:p.mood, date:p.date, time:timeNow(), pinned:false }));
+    const newId = 'n' + Date.now();
+    commit('Заметка сохранена', () => state.notes.unshift({ id:newId, createdAt:Date.now(), text:p.text, mood:p.mood, date:p.date, time:timeNow(), pinned:false }));
+    maybeAutoAI(newId);
   }
 }
 function editVoiceInForm() {
@@ -1532,7 +1682,7 @@ const timeNow = () => new Date().toLocaleTimeString('ru-RU', { hour:'2-digit', m
 setIcons();
 setTheme(state.theme, { persist:false });
 populateCategories(); invalidate();
-updateProfileUI(); wireV9(); updateInstallUI(); ensureAppleIcon();
+updateProfileUI(); wireV9(); wireAI(); updateInstallUI(); ensureAppleIcon();
 if (document.documentElement.dataset.locked) { if (getProfile().pin) setTimeout(() => qs('#lockPin').focus(), 120); else delete document.documentElement.dataset.locked; }
 const today = new Date();
 qs('#todayLabel').textContent = new Intl.DateTimeFormat('ru-RU', { weekday:'long', day:'numeric', month:'long' }).format(today).replace(/^./, x => x.toUpperCase());
@@ -1606,13 +1756,14 @@ qs('#planForm').addEventListener('submit', e => {
 });
 qs('#noteForm').addEventListener('submit', e => {
   e.preventDefault(); if (!validateForm(e.target)) return;
-  const data = new FormData(e.target); const id = editingNoteId;
+  const data = new FormData(e.target); const id = editingNoteId; const newId = id ? null : 'n' + Date.now();
   const values = { text:data.get('text').trim(), mood:data.get('mood'), date:data.get('date') };
   closeModals();
   commit(id ? 'Заметка обновлена' : 'Заметка сохранена', () => {
     if (id) { const i = state.notes.findIndex(item => item.id === id); if (i >= 0) state.notes[i] = { ...state.notes[i], ...values }; }
-    else state.notes.unshift({ id:'n' + Date.now(), createdAt:Date.now(), time:timeNow(), pinned:false, ...values });
+    else state.notes.unshift({ id:newId, createdAt:Date.now(), time:timeNow(), pinned:false, ...values });
   });
+  if (newId) maybeAutoAI(newId);
   editingNoteId = null;
 });
 qs('#budgetForm').addEventListener('submit', e => {
@@ -1664,7 +1815,7 @@ qs('#resetData').addEventListener('click', () => { closeModals(); commit('Дем
 
 if ('serviceWorker' in navigator) {
   const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
-  navigator.serviceWorker.register('./service-worker.js?v=9').catch(() => {});
+  navigator.serviceWorker.register('./service-worker.js?v=10').catch(() => {});
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
 }
 
@@ -1673,6 +1824,8 @@ refreshClock();
 setSyncStatus(cloud.configured() ? (cloud.session ? 'pending' : 'auth') : 'local');
 if (cloud.configured() && cloud.session) scheduleSync(600);
 recoverFromBackup();
+document.addEventListener('keydown', e => { const t = e.target; if ((e.key === 'Enter' || e.key === ' ') && t.matches && t.matches('[data-navigate][role="button"]')) { e.preventDefault(); location.hash = t.dataset.navigate; } });
+if (cloud.configured() && !cloud.session && !LS.get('schetchik-welcomed') && !document.documentElement.dataset.locked) setTimeout(() => { if (!qsa('.modal-backdrop.open').length) openAccount('code'); }, 900);
 (function handleShortcuts() {
   const action = new URLSearchParams(location.search).get('action'); if (!action) return;
   history.replaceState(null, '', location.pathname + location.hash);

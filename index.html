@@ -17,8 +17,8 @@
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" id="appleIcon" href="apple-touch-icon.png" />
-    <link rel="manifest" href="manifest.webmanifest?v=9" />
-    <link rel="stylesheet" href="styles.css?v=9" />
+    <link rel="manifest" href="manifest.webmanifest?v=10" />
+    <link rel="stylesheet" href="styles.css?v=10" />
     <title>Счётчик — личные финансы</title>
   </head>
   <body>
@@ -31,7 +31,6 @@
 
         <nav class="nav-list">
           <a class="nav-item active" href="#dashboard" data-page="dashboard"><span class="nav-icon" data-icon="grid"></span>Обзор</a>
-          <a class="nav-item" href="#transactions" data-page="transactions"><span class="nav-icon" data-icon="arrows"></span>Операции</a>
           <a class="nav-item" href="#budget" data-page="budget"><span class="nav-icon" data-icon="pie"></span>Бюджет</a>
           <a class="nav-item" href="#shopping" data-page="shopping"><span class="nav-icon" data-icon="target"></span>Планы <span class="nav-count" id="plansNavCount">0</span></a>
           <a class="nav-item" href="#notes" data-page="notes"><span class="nav-icon" data-icon="book"></span>Заметки</a>
@@ -74,14 +73,14 @@
           </section>
 
           <section class="stat-grid" aria-label="Ключевые показатели">
-            <article class="stat-card income"><div class="stat-icon"><span data-icon="arrow-down-left"></span></div><div><p>Доходы</p><b id="incomeTotal">0 ₽</b><small id="incomeSubtitle">в этом месяце</small></div><span class="stat-trend positive" id="incomeTrend">+0%</span></article>
-            <article class="stat-card expense"><div class="stat-icon"><span data-icon="arrow-up-right"></span></div><div><p>Расходы</p><b id="expenseTotal">0 ₽</b><small id="expenseSubtitle">в этом месяце</small></div><span class="stat-trend negative" id="expenseTrend">0%</span></article>
+            <article class="stat-card income stat-link" data-navigate="transactions" role="button" tabindex="0" aria-label="Доходы — открыть операции"><div class="stat-icon"><span data-icon="arrow-down-left"></span></div><div><p>Доходы</p><b id="incomeTotal">0 ₽</b><small id="incomeSubtitle">в этом месяце</small></div><span class="stat-trend positive" id="incomeTrend">+0%</span></article>
+            <article class="stat-card expense stat-link" data-navigate="transactions" role="button" tabindex="0" aria-label="Расходы — открыть операции"><div class="stat-icon"><span data-icon="arrow-up-right"></span></div><div><p>Расходы</p><b id="expenseTotal">0 ₽</b><small id="expenseSubtitle">в этом месяце</small></div><span class="stat-trend negative" id="expenseTrend">0%</span></article>
             <article class="stat-card target"><div class="stat-icon"><span data-icon="target"></span></div><div><p>Цель месяца</p><b id="budgetProgress">0%</b><small id="budgetSubtitle">0 из 0 ₽</small></div><span class="ring-progress" id="progressRing"><svg viewBox="0 0 38 38"><circle class="ring-bg" cx="19" cy="19" r="15.915"/><circle class="ring-value" cx="19" cy="19" r="15.915"/></svg></span></article>
           </section>
 
           <section class="dashboard-grid">
             <article class="panel spending-panel">
-              <div class="panel-head"><div><h2>Расходы по категориям</h2><p id="chartMonth">Текущий месяц</p></div><button class="quiet-button" data-navigate="budget">Все категории <span data-icon="arrow-right"></span></button></div>
+              <div class="panel-head"><div><h2>Расходы по категориям</h2><p id="chartMonth" hidden>Текущий месяц</p></div><button class="quiet-button" data-navigate="budget">Все категории <span data-icon="arrow-right"></span></button></div>
               <div class="chart-wrap">
                 <div class="donut-chart" id="donutChart"><div class="donut-center"><b id="chartTotal">0 ₽</b><span>всего</span></div></div>
                 <div class="legend-list" id="categoryLegend"></div>
@@ -89,7 +88,7 @@
             </article>
 
             <article class="panel cashflow-panel">
-              <div class="panel-head"><div><h2>Движение денег</h2><p>Последние 6 месяцев</p></div><button class="period-button">6 мес. <span data-icon="chevron-down"></span></button></div>
+              <div class="panel-head"><div><h2>Движение денег</h2></div><button class="period-button">6 мес. <span data-icon="chevron-down"></span></button></div>
               <div class="bar-chart" id="barChart" aria-label="График доходов и расходов"></div>
               <div class="chart-key"><span><i class="key income-key"></i>Доходы</span><span><i class="key expense-key"></i>Расходы</span></div>
             </article>
@@ -97,11 +96,11 @@
 
           <section class="dashboard-grid lower-grid">
             <article class="panel transactions-panel">
-              <div class="panel-head"><div><h2>Последние операции</h2><p>Ваши недавние расходы и доходы</p></div><button class="quiet-button" data-navigate="transactions">Все операции <span data-icon="arrow-right"></span></button></div>
+              <div class="panel-head"><div><h2>Последние операции</h2></div><button class="quiet-button" data-navigate="transactions">Все операции <span data-icon="arrow-right"></span></button></div>
               <div class="transaction-list" id="recentTransactions"></div>
             </article>
             <article class="panel shopping-preview">
-              <div class="panel-head"><div><h2>Ближайшие планы</h2><p id="plansSubtitle">Платежи и покупки</p></div><button class="circle-add" id="openPlanModal" aria-label="Добавить план"><span data-icon="plus"></span></button></div>
+              <div class="panel-head"><div><h2>Ближайшие планы</h2><p id="plansSubtitle" hidden>Платежи и покупки</p></div><button class="circle-add" id="openPlanModal" aria-label="Добавить план"><span data-icon="plus"></span></button></div>
               <div class="plans-preview-list" id="plansPreview"></div>
               <button class="wide-subtle-button" data-navigate="shopping">Открыть планы <span data-icon="arrow-right"></span></button>
             </article>
@@ -109,36 +108,35 @@
         </section>
 
         <section class="page" id="transactions">
-          <div class="page-intro"><div><h2>Операции</h2><p>Все доходы и расходы в одном месте.</p></div><button class="add-button" data-open-transaction><span data-icon="plus"></span>Добавить операцию</button></div>
+          <div class="page-intro"><div class="intro-with-back"><button class="back-btn" type="button" data-navigate="dashboard" aria-label="Назад к обзору" title="Назад к обзору"><span data-icon="arrow-right"></span></button><h2>Операции</h2></div><button class="add-button" data-open-transaction><span data-icon="plus"></span>Добавить операцию</button></div>
           <div class="filter-row"><div class="filter-tabs"><button class="filter-tab active" data-filter="all">Все</button><button class="filter-tab" data-filter="expense">Расходы</button><button class="filter-tab" data-filter="income">Доходы</button></div><label class="search-box"><span data-icon="search"></span><input id="transactionSearch" placeholder="Найти операцию" /></label></div>
           <article class="panel full-panel"><div class="transaction-list detailed-list" id="allTransactions"></div></article>
         </section>
 
         <section class="page" id="budget">
-          <div class="page-intro"><div><h2 id="budgetPageTitle">Бюджет на этот месяц</h2><p>Планируйте траты и оставайтесь в рамках цели.</p></div><button class="add-button" id="editBudget"><span data-icon="edit"></span>Изменить бюджет</button></div>
+          <div class="page-intro"><div><h2 id="budgetPageTitle">Бюджет на этот месяц</h2></div><button class="add-button" id="editBudget"><span data-icon="edit"></span>Изменить бюджет</button></div>
           <section class="budget-summary"><article><span data-icon="wallet"></span><p>Общий бюджет</p><b id="budgetTotalLarge">0 ₽</b></article><article><span data-icon="pie"></span><p>Потрачено</p><b id="budgetSpentLarge">0 ₽</b></article><article><span data-icon="sparkles"></span><p>Осталось</p><b id="budgetLeftLarge">0 ₽</b></article></section>
-          <article class="panel full-panel"><div class="panel-head"><div><h2>Лимиты по категориям</h2><p>Следите за запланированными тратами</p></div></div><div class="budget-categories" id="budgetCategories"></div></article>
+          <article class="panel full-panel"><div class="panel-head"><div><h2>Лимиты по категориям</h2></div></div><div class="budget-categories" id="budgetCategories"></div></article>
         </section>
 
         <section class="page" id="shopping">
-          <div class="page-intro"><div><h2>Планы и покупки</h2><p>Будущие платежи и покупки, о которых важно не забыть.</p></div><div class="page-actions"><button class="voice-button" id="voicePlan" title="Скажите, например: «я хочу на 26 октября купить новые наушники за 3500»"><span data-icon="mic"></span><span>Продиктовать</span></button><button class="add-button" data-open-plan><span data-icon="plus"></span>Добавить план</button></div></div>
+          <div class="page-intro"><div><h2>Планы и покупки</h2></div><div class="page-actions"><button class="voice-button" id="voicePlan" title="Скажите, например: «я хочу на 26 октября купить новые наушники за 3500»"><span data-icon="mic"></span><span>Продиктовать</span></button><button class="add-button" data-open-plan><span data-icon="plus"></span>Добавить план</button></div></div>
           <div class="planning-stats"><span><b id="plansPendingCount">0</b> запланировано</span><span id="plansBudgetSum">0 ₽ ожидается</span></div>
-          <article class="panel plans-panel"><div class="panel-head"><div><h2>Предстоящие расходы</h2><p>Перетаскивайте карточки мышкой/пальцем или нажимайте ↑↓ для смены приоритета.</p></div><button class="circle-add" data-open-plan aria-label="Добавить план"><span data-icon="plus"></span></button></div><div class="plans-list" id="plansFull"></div></article>
-          <article class="panel full-panel wish-panel"><div class="panel-head"><div><h2>Список покупок</h2><p id="shoppingSubtitle">Соберите покупки и не забудьте важное.</p></div><button class="circle-add" id="openShoppingModal" aria-label="Добавить покупку"><span data-icon="plus"></span></button></div><div class="shopping-stats"><span><b id="shoppingPendingCount">0</b> в списке</span><span id="shoppingBudgetSum">0 ₽ запланировано</span></div><div class="purchase-focus" id="purchaseFocus"></div><div class="shopping-list shopping-page-list" id="shoppingFull"></div><div class="completed-block" id="completedBlock"><button id="toggleCompleted">Куплено <span id="completedCount">0</span> <span data-icon="chevron-down"></span></button><div id="completedList"></div></div></article>
+          <article class="panel plans-panel"><div class="panel-head"><div><h2>Предстоящие расходы</h2></div></div><div class="plans-list" id="plansFull"></div></article>
+          <article class="panel full-panel wish-panel"><div class="panel-head"><div><h2>Список покупок</h2><p id="shoppingSubtitle" hidden>Соберите покупки и не забудьте важное.</p></div><button class="circle-add" id="openShoppingModal" aria-label="Добавить покупку"><span data-icon="plus"></span></button></div><div class="shopping-stats"><span><b id="shoppingPendingCount">0</b> в списке</span><span id="shoppingBudgetSum">0 ₽ запланировано</span></div><div class="purchase-focus" id="purchaseFocus"></div><div class="shopping-list shopping-page-list" id="shoppingFull"></div><div class="completed-block" id="completedBlock"><button id="toggleCompleted">Куплено <span id="completedCount">0</span> <span data-icon="chevron-down"></span></button><div id="completedList"></div></div></article>
         </section>
 
         <section class="page" id="notes">
-          <div class="page-intro"><div><h2>Заметки</h2><p>Короткий личный дневник — мысли, идеи и важные события.</p></div><div class="page-actions"><button class="voice-button" id="voiceNote" title="Надиктовать быструю заметку голосом"><span data-icon="mic"></span><span>Надиктовать</span></button><button class="add-button" id="openNoteModal"><span data-icon="plus"></span>Новая заметка</button></div></div>
+          <div class="page-intro"><div><h2>Заметки</h2></div><div class="page-actions"><button class="voice-button" id="voiceNote" title="Надиктовать быструю заметку голосом"><span data-icon="mic"></span><span>Надиктовать</span></button><button class="add-button" id="openNoteModal"><span data-icon="plus"></span>Новая заметка</button></div></div>
           <div class="notes-stats"><span><b id="notesTodayCount">0</b> сегодня</span><span><b id="notesTotalCount">0</b> всего записей</span><span>Серия: <b id="notesStreak">0</b> дн. подряд</span></div>
           <div class="note-prompt" id="notePrompt"></div>
           <div class="filter-row note-filter-row"><div class="filter-tabs"><button class="filter-tab active" data-note-mood="all">Все</button><button class="filter-tab" data-note-mood="good">Хорошо</button><button class="filter-tab" data-note-mood="idea">Идеи</button><button class="filter-tab" data-note-mood="important">Важно</button><button class="filter-tab" data-note-mood="calm">Спокойно</button></div><label class="search-box"><span data-icon="search"></span><input id="noteSearch" placeholder="Поиск или #тег" /></label></div>
-          <article class="panel notes-panel"><div class="panel-head"><div><h2>Мой день</h2><p id="notesSubtitle">Запишите мысль, чтобы вернуться к ней позже.</p></div><button class="circle-add" data-open-note aria-label="Новая заметка"><span data-icon="plus"></span></button></div><div class="notes-list" id="notesList"></div></article>
+          <article class="panel notes-panel"><div class="panel-head"><div><h2>Мой день</h2><p id="notesSubtitle" hidden>Запишите мысль, чтобы вернуться к ней позже.</p></div></div><div class="notes-list" id="notesList"></div></article>
         </section>
       </main>
 
       <nav class="mobile-nav" aria-label="Мобильная навигация">
         <a class="mobile-item active" href="#dashboard" data-page="dashboard"><span data-icon="grid"></span><small>Обзор</small></a>
-        <a class="mobile-item" href="#transactions" data-page="transactions"><span data-icon="arrows"></span><small>Операции</small></a>
         <button class="mobile-add" id="mobileAdd" aria-label="Добавить операцию"><span data-icon="plus"></span></button>
         <a class="mobile-item" href="#budget" data-page="budget"><span data-icon="pie"></span><small>Бюджет</small></a>
         <a class="mobile-item" href="#shopping" data-page="shopping"><span data-icon="target"></span><small>Планы</small></a>
@@ -179,7 +177,7 @@
         <label class="field"><span>Категория</span><select name="category" id="planCategorySelect"></select></label>
         <label class="field"><span id="planDateLabel">Когда оплатить?</span><input name="date" type="date" id="planDate" required /></label>
         <button class="voice-form-button" type="button" id="voicePlanForm"><span data-icon="mic"></span>Продиктовать план голосом</button>
-        <p class="voice-hint">Пример: «Хочу на 26 октября купить наушники за 3500» — заполню поля сам.</p>
+        
         <button class="modal-submit" id="planFormSubmit" type="submit">Добавить в планы <span data-icon="arrow-right"></span></button>
       </form>
     </div>
@@ -190,7 +188,7 @@
         <label class="field"><span>Что хотите сохранить?</span><textarea name="text" id="noteText" rows="5" placeholder="Например, идея для выходных или что порадовало сегодня" required></textarea></label>
         <div class="field-row"><label class="field"><span>Настроение</span><select name="mood"><option value="calm">Спокойно</option><option value="good">Хорошо</option><option value="idea">Идея</option><option value="important">Важно</option></select></label><label class="field"><span>Дата</span><input name="date" type="date" id="noteDate" required /></label></div>
         <button class="voice-form-button" type="button" id="voiceNoteForm"><span data-icon="mic"></span>Надиктовать текст</button>
-        <p class="voice-hint">Подсказка: слова с # (например, #идея) становятся тегами, по ним можно искать.</p>
+        
         <button class="modal-submit" id="noteFormSubmit" type="submit">Сохранить заметку <span data-icon="arrow-right"></span></button>
       </form>
     </div>
@@ -229,19 +227,27 @@
 
         <details class="set-details" id="cloudDetails">
           <summary>Облако и синхронизация</summary>
-          <p class="modal-hint">Данные синхронизируются между телефоном и ПК через ваш бесплатный проект Supabase. Без него всё работает на устройстве.</p>
           <div class="cloud-actions"><button type="button" class="voice-secondary" id="syncNowBtn">Синхронизировать сейчас</button><button type="button" class="voice-secondary" id="signOutBtn" hidden>Выйти из облака</button></div>
           <label class="field"><span>Supabase URL</span><input id="cloudUrl" inputmode="url" autocomplete="off" placeholder="https://xxxx.supabase.co" /></label>
           <label class="field"><span>Supabase anon key</span><input id="cloudKey" autocomplete="off" placeholder="eyJ…" /></label>
           <button type="button" class="voice-secondary wide" id="saveCloud">Сохранить подключение</button>
-          <p class="modal-hint">Один раз выполните SQL в Supabase (SQL Editor):</p>
+          <p class="modal-hint">SQL для Supabase (один раз):</p>
           <pre class="sql-box" id="sqlBox"></pre>
           <button type="button" class="voice-secondary wide" id="copySql">Скопировать SQL</button>
         </details>
 
+        <details class="set-details" id="aiDetails">
+          <summary>ИИ-помощник (Gemini)</summary>
+          <label class="field"><span>API-ключ Gemini</span><input id="aiKey" type="password" autocomplete="off" autocapitalize="off" placeholder="AIza…" /></label>
+          <label class="field"><span>Модель</span><input id="aiModel" autocomplete="off" autocapitalize="off" placeholder="gemini-3.5-flash" /></label>
+          <label class="check-row"><input type="checkbox" id="aiAuto" /><span>Комментировать новые заметки сам</span></label>
+          <label class="check-row"><input type="checkbox" id="aiContext" /><span>Учитывать мои расходы и планы</span></label>
+          <div class="cloud-actions"><button type="button" class="voice-secondary" id="aiTest">Проверить</button><button type="button" class="voice-secondary danger-text" id="aiClear">Удалить ключ</button><a class="ai-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Получить ключ</a></div>
+          <p class="modal-hint">Ключ хранится только на этом устройстве. С вопросом в Google уходит сводка ваших финансов.</p>
+        </details>
+
         <details class="set-details">
           <summary>Перенос по коду (без сервера)</summary>
-          <p class="modal-hint">Скопируйте код на одном устройстве и вставьте на другом — данные объединятся без потери записей.</p>
           <button type="button" class="voice-secondary wide" id="copyCode">Скопировать код этого устройства</button>
           <label class="field"><span>Вставьте код с другого устройства</span><textarea id="transferInput" rows="3" placeholder="SC1:…"></textarea></label>
           <button type="button" class="voice-secondary wide" id="applyCode">Объединить данные</button>
@@ -256,21 +262,21 @@
             <button type="button" class="data-action danger" id="resetData"><span data-icon="rotate"></span><div><b>Вернуть демо-данные</b><small>Сбросит всё к примерам (можно отменить)</small></div></button>
           </div>
           <input type="file" id="importFile" accept="application/json,.json" hidden />
-          <p class="version-note">Счётчик v9</p>
+          <p class="version-note">Счётчик v10</p>
         </section>
       </div>
     </div>
 
     <div class="modal-backdrop" id="accountModal" aria-hidden="true">
       <form class="modal compact-modal" id="accountForm" autocomplete="on">
-        <div class="modal-header"><div><p class="eyebrow">Облако</p><h2>Вход / Регистрация</h2></div><button type="button" class="modal-close" data-close-modal aria-label="Закрыть"><span data-icon="x"></span></button></div>
-        <div class="voice-modes auth-tabs" id="authTabs" role="group" aria-label="Способ входа"><button type="button" class="voice-mode active" data-auth="signin">Вход</button><button type="button" class="voice-mode" data-auth="signup">Регистрация</button><button type="button" class="voice-mode" data-auth="link">По коду</button></div>
+        <div class="modal-header"><div><p class="eyebrow">Облако</p><h2 id="accountTitle">Вход по email</h2></div><button type="button" class="modal-close" data-close-modal aria-label="Закрыть"><span data-icon="x"></span></button></div>
         <p class="auth-note" id="authNote"></p>
-        <label class="field"><span>Email</span><input name="email" type="email" required autocomplete="email" inputmode="email" placeholder="you@mail.com" /></label>
-        <label class="field" id="authPassField"><span>Пароль</span><input name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="Минимум 6 символов" /></label>
+        <label class="field"><span>Email</span><input name="email" type="email" required autocomplete="email" inputmode="email" autocapitalize="off" placeholder="you@mail.com" /></label>
+        <label class="field" id="authPassField" hidden><span>Пароль</span><input name="password" type="password" minlength="6" autocomplete="current-password" placeholder="Минимум 6 символов" /></label>
         <label class="field" id="authCodeField" hidden><span>Код из письма</span><input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="Код из письма" /></label>
-        <button class="modal-submit" id="authSubmit" type="submit">Войти</button>
-        <button type="button" class="voice-secondary wide" id="guestBtn">Продолжить без аккаунта</button>
+        <button class="modal-submit" id="authSubmit" type="submit">Получить код</button>
+        <div class="auth-links" id="authLinks"></div>
+        <button type="button" class="voice-secondary wide" id="guestBtn">Пропустить</button>
       </form>
     </div>
 
@@ -325,7 +331,7 @@
         <label class="field"><span>Распознанный текст — можно поправить</span><textarea id="voiceText" rows="3" placeholder="Например: хочу на 26 октября купить наушники за 3500"></textarea></label>
         <div class="voice-preview" id="voicePreview"></div>
         <div class="voice-actions"><button type="button" class="voice-secondary" id="voiceEditForm">Открыть в форме</button><button type="button" class="modal-submit voice-confirm" id="voiceConfirm" disabled>Добавить</button></div>
-        <p class="voice-hint">Примеры: «Хочу на 26 октября купить наушники за 3500» · «Надо оплатить кредит 12500 через неделю» · «Потратил 450 на кофе» · «Заметка: сегодня был хороший день».</p>
+        <p class="voice-hint">Например: «Хочу на 26 октября купить наушники за 3500» · «Потратил 450 на кофе» · «Заметка: …»</p>
       </div>
     </div>
 
@@ -344,6 +350,6 @@
     <button class="voice-fab" id="voiceFab" aria-label="Голосовой ввод" title="Сказать план, трату или заметку"><span data-icon="mic"></span></button>
 
     <div class="toast" id="toast"><span data-icon="check"></span><span id="toastText">Сохранено</span><button type="button" class="toast-action" id="toastUndo" hidden>Отменить</button></div>
-    <script src="app.js?v=9"></script>
+    <script src="app.js?v=10"></script>
   </body>
 </html>
