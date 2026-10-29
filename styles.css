@@ -479,3 +479,80 @@ html[data-theme="dark"] .ai-error { color:#ffd0c9; background:#4a2824; }
 /* Заголовок страницы уже есть в шапке — не дублируем его на «Планах» и «Заметках» */
 #shopping .page-intro > div:first-child,#notes .page-intro > div:first-child { display:none; }
 #shopping .page-intro,#notes .page-intro { justify-content:flex-end; margin-bottom:14px; }
+
+/* ======================================================================
+   v11
+   ====================================================================== */
+/* Фото профиля */
+.avatar { background-size:cover; background-position:center; background-repeat:no-repeat; }
+.avatar.has-photo { color:transparent; }
+.avatar-edit { position:relative; flex:0 0 auto; width:48px; height:48px; border-radius:50%; cursor:pointer; font-size:18px; font-weight:800; }
+.avatar-edit::after { content:"✎"; position:absolute; right:-3px; bottom:-3px; display:grid; place-items:center; width:20px; height:20px; border-radius:50%; color:#fff; background:#3f7d5a; border:2px solid var(--surface-2); font-size:10px; }
+.avatar-edit:hover { filter:brightness(1.08); }
+.link-btn { display:inline-flex; align-items:center; min-height:40px; padding:0 4px; color:var(--text-2); background:transparent; font-size:13px; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+.link-btn:hover { color:var(--ink); } .link-btn[hidden] { display:none !important; }
+.account-card + input + .link-btn,.account-card ~ .link-btn { margin:2px 0 6px; }
+
+/* Промокод */
+.promo-status { margin:4px 14px 10px; color:#1d7a46; font-size:13px; font-weight:800; } html[data-theme="dark"] .promo-status { color:#86e3a6; }
+.set-sub { margin:10px 14px 4px; color:var(--text-3); font-size:12px; font-weight:700; }
+.promo-row .voice-secondary.wide { margin-bottom:6px; }
+
+/* Планировщик */
+.planner-button { color:#4b3a91; border-color:#d9cff7; } html[data-theme="dark"] .planner-button { color:#e6deff; border-color:#4b3f86; }
+.planner-button:hover { background:#f1ecfb; } html[data-theme="dark"] .planner-button:hover { background:#2a2444; }
+.planner-modal,.ai-chat-modal { width:min(100%,560px); max-height:calc(100dvh - 40px); display:flex; flex-direction:column; overflow:hidden; }
+.planner-log,.ai-chat-body { display:grid; align-content:start; gap:10px; flex:1 1 auto; min-height:180px; max-height:56vh; overflow-y:auto; overscroll-behavior:contain; padding:2px 2px 8px; }
+.planner-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.planner-chips button { min-height:38px; padding:0 12px; border:1px solid var(--line); border-radius:19px; color:var(--ink); background:var(--surface-2); font-size:12px; font-weight:700; }
+.planner-chips button:hover { background:var(--mint-pale); }
+.planner-form { margin-top:12px; }
+.proposals { display:grid; gap:8px; margin-top:10px; }
+.proposal { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:4px 10px; padding:9px 10px; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); }
+.proposal.added { opacity:.75; }
+.proposal-icon { display:grid; place-items:center; width:32px; height:32px; border-radius:10px; } .proposal-icon svg { width:16px; }
+.proposal-main { min-width:0; } .proposal-main b,.proposal-main small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .proposal-main b { font-size:13px; } .proposal-main small { margin-top:2px; color:var(--text-3); font-size:11px; }
+.proposal-amount { font-size:13px; white-space:nowrap; }
+.proposal-add,.proposal-all { min-height:38px; padding:0 12px; border-radius:10px; color:#102219; background:#b7e9ac; font-size:12px; font-weight:800; }
+.proposal-add:disabled { color:var(--text-2); background:var(--chip); cursor:default; }
+.proposal-all { width:100%; }
+@media (max-width:760px) { .proposal { grid-template-columns:auto minmax(0,1fr) auto; } .proposal-add { grid-column:1 / -1; } }
+
+/* Разговор с ИИ в карточке заметки */
+.ai-head { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.ai-title { color:var(--text-2); font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.ai-head-actions { display:flex; gap:2px; }
+.ai-head-actions button { min-height:36px; padding:0 8px; color:var(--text-2); background:transparent; font-size:12px; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+.ai-head-actions button:hover { color:var(--ink); }
+.ai-thread.collapsed { padding-top:6px; margin-top:8px; }
+.ai-msgs { display:grid; gap:8px; max-height:340px; overflow-y:auto; overscroll-behavior:contain; }
+.ai-msgs.full { max-height:none; }
+.ai-chat-note { margin:0 0 10px; padding:10px 12px; border-radius:12px; color:var(--ink); background:var(--chip); font-size:13px; line-height:1.5; max-height:96px; overflow:auto; overflow-wrap:anywhere; }
+.ai-chat-body { max-height:52vh; }
+#aiChatForm { margin-top:12px; }
+@media (max-width:760px) { .planner-log,.ai-chat-body { max-height:50dvh; } }
+/* Контраст в новых окнах */
+.proposal.added { opacity:1; }
+.proposal.added .proposal-icon { opacity:.7; }
+.data-action small { color:var(--text-2); }
+/* Ряды фильтров не растягивают страницу: на узком экране прокручиваются внутри себя */
+.filter-tabs { max-width:100%; min-width:0; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.filter-tabs::-webkit-scrollbar { display:none; }
+.filter-tab { flex:0 0 auto; white-space:nowrap; }
+.filter-row { min-width:0; max-width:100%; }
+@media (max-width:760px) { .note-filter-row .filter-tabs,.note-filter-row .search-box { width:100%; } }
+/* Длинные названия не растягивают панели */
+.panel,.stat-card,.balance-card,.transaction-list,.plans-panel,.transactions-panel { min-width:0; }
+.transaction-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width:1120px) { .dashboard-grid,.lower-grid { grid-template-columns:minmax(0,1fr) !important; } }
+.plan-preview { min-width:0; }
+.plan-preview-info { min-width:0; flex:1; }
+.plan-preview-title,.plan-preview-meta { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.plan-preview-amount { flex:0 0 auto; white-space:nowrap; }
+.shopping-info,.plan-main,.note-card,.transaction-info,.budget-category,.account-text,.proposal-main { min-width:0; }
+/* «1fr» в grid не даёт колонке сжаться меньше содержимого — используем minmax(0,1fr) */
+.plans-list { grid-template-columns:minmax(0,1fr); }
+@media (max-width:760px) { .notes-list { grid-template-columns:minmax(0,1fr); } .note-card { overflow-wrap:anywhere; } }
+.ai-thread { grid-template-columns:minmax(0,1fr); min-width:0; max-width:100%; }
+.ai-head,.ai-msgs,.ai-msg,.ai-ask { min-width:0; max-width:100%; }
+.ai-msg.ai .ai-text,.ai-msg.me .ai-text { min-width:0; overflow-wrap:anywhere; }

@@ -64,36 +64,7 @@ const dateFromToday = daysAgo => {
 const currentMonthKey = () => isoDate(new Date()).slice(0, 7);
 const monthLabel = (date = new Date()) => new Intl.DateTimeFormat('ru-RU', { month:'long', year:'numeric' }).format(date).replace(' г.', '').replace(/^./, char => char.toUpperCase());
 
-const initialState = {
-  budget: 85000,
-  transactions: [
-    { id:'t1', type:'expense', title:'Продукты', category:'Продукты', amount:4350, date:dateFromToday(1) },
-    { id:'t2', type:'expense', title:'Яндекс Музыка', category:'Подписки', amount:299, date:dateFromToday(2) },
-    { id:'t3', type:'income', title:'Зарплата', category:'Зарплата', amount:120000, date:dateFromToday(3) },
-    { id:'t4', type:'expense', title:'Такси', category:'Транспорт', amount:780, date:dateFromToday(3) },
-    { id:'t5', type:'expense', title:'Ужин с друзьями', category:'Кафе и рестораны', amount:2400, date:dateFromToday(5) },
-    { id:'t6', type:'expense', title:'Кроссовки', category:'Покупки', amount:6490, date:dateFromToday(7) },
-    { id:'t7', type:'income', title:'Фриланс-проект', category:'Фриланс', amount:34000, date:dateFromToday(10) },
-    { id:'t8', type:'expense', title:'Аптека', category:'Здоровье', amount:1170, date:dateFromToday(12) },
-    { id:'t9', type:'expense', title:'Кофе', category:'Кафе и рестораны', amount:420, date:dateFromToday(14) },
-    { id:'t10', type:'expense', title:'Метро', category:'Транспорт', amount:720, date:dateFromToday(17) },
-    { id:'t11', type:'income', title:'Кэшбэк', category:'Другое', amount:1340, date:dateFromToday(20) }
-  ],
-  shopping: [
-    {id:'s1', title:'Наушники Sony', amount:12990, category:'Покупки', priority:'high', date:dateFromToday(-3), done:false},
-    {id:'s2', title:'Кроссовки для бега', amount:7990, category:'Здоровье', priority:'normal', date:dateFromToday(-12), done:false},
-    {id:'s3', title:'Книга «Атомные привычки»', amount:890, category:'Учёба', priority:'low', date:'', done:false},
-    {id:'s4', title:'Бумажные полотенца', amount:350, category:'Продукты', priority:'normal', date:'', done:true}
-  ],
-  plans: [
-    {id:'p1', kind:'payment', title:'Оплатить общежитие', category:'Жильё', amount:7800, date:dateFromToday(-5), done:false},
-    {id:'p2', kind:'payment', title:'Платёж по кредиту', category:'Кредит', amount:12500, date:dateFromToday(-9), done:false},
-    {id:'p3', kind:'purchase', title:'Планшет для учёбы', category:'Учёба', amount:39990, date:dateFromToday(-21), done:false}
-  ],
-  notes: [
-    {id:'n1', text:'Хочу планировать покупки заранее и оставлять место для приятных мелочей.', mood:'idea', date:dateFromToday(0)}
-  ]
-};
+const initialState = { budget: 30000, transactions: [], shopping: [], plans: [], notes: [] };
 
 const clone = data => JSON.parse(JSON.stringify(data));
 
@@ -104,10 +75,10 @@ const clone = data => JSON.parse(JSON.stringify(data));
 /* ---- Облако: вставьте свои значения сюда ИЛИ в окне «Профиль и облако» ---- */
 const SUPABASE_URL = 'https://thxaxrnbprlgufxvilxy.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_-u4QG3A9BjTwsOv4wqsFCg_2cqXj76I';  // публичный (publishable) ключ — его можно хранить в приложении
-const APP_VERSION = 10;
+const APP_VERSION = 11;
 
 const COLLECTIONS = ['transactions', 'shopping', 'plans', 'notes'];
-const SCALARS = ['budget', 'userName', 'theme'];
+const SCALARS = ['budget', 'userName', 'theme', 'avatar'];
 const TOMBSTONE_TTL = 90 * 86400000;
 
 const LS = {
@@ -174,6 +145,7 @@ function normalizeState() {
     state[c] = state[c].filter(item => item && item.id != null).map(item => ({ ...item, id:String(item.id), updatedAt:Number(item.updatedAt) || 0 }));
   }
   if (!(Number(state.budget) > 0)) state.budget = initialState.budget;
+  if (typeof state.avatar !== 'string') state.avatar = '';
   if (typeof state.userName !== 'string' || !state.userName.trim()) state.userName = getProfile()?.name || 'Гость';
   if (state.theme !== 'light' && state.theme !== 'dark') state.theme = LS.raw('schetchik-theme') === 'light' ? 'light' : 'dark';
   for (const k of SCALARS) if (typeof state[k + 'At'] !== 'number') state[k + 'At'] = 0;
@@ -421,12 +393,12 @@ function renderDashboard() {
   qs('#budgetSubtitle').textContent = `${fmt(expenses)} из ${fmt(state.budget)}`;
   qs('#balanceMonth').textContent = monthLabel();
   qs('#chartMonth').textContent = monthLabel();
-  qs('#balanceChange').textContent = `+${Math.max(1, Math.round(((income - expenses) / Math.max(income, 1)) * 100))}%`;
+  qs('#balanceChange').textContent = income > 0 ? `${income >= expenses ? '+' : '−'}${Math.abs(Math.round(((income - expenses) / income) * 100))}%` : '0%';
   const circle = qs('#progressRing .ring-value');
   circle.style.strokeDasharray = `${progress} ${100 - progress}`;
   renderCategoryChart(items.filter(i => i.type === 'expense'), expenses);
   renderBarChart();
-  qs('#recentTransactions').innerHTML = liveTx().sort((a,b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0,4).map(i => transactionHTML(i)).join('');
+  qs('#recentTransactions').innerHTML = liveTx().sort((a,b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0,4).map(i => transactionHTML(i)).join('') || '<div class="empty-state">Пока нет операций — нажмите «Добавить» или скажите голосом</div>';
 }
 
 function renderCategoryChart(expenses, total) {
@@ -456,7 +428,7 @@ function renderTransactions() {
   const shown = all.slice(0, txLimit);
   qs('#allTransactions').innerHTML = shown.length
     ? shown.map(i => transactionHTML(i, true)).join('') + (all.length > shown.length ? `<button class="more-button-row" type="button" data-more-tx>Показать ещё · ${all.length - shown.length}</button>` : '')
-    : '<div class="empty-state"><span>⌕</span>Ничего не нашлось</div>';
+    : `<div class="empty-state"><span>⌕</span>${liveTx().length ? 'Ничего не нашлось' : 'Пока пусто — нажмите «Добавить» и внесите первую операцию'}</div>`;
 }
 
 function renderBudget() {
@@ -723,11 +695,34 @@ const timeLabel = ts => new Date(ts).toLocaleTimeString('ru-RU', { hour:'2-digit
 
 /* ---- Профиль в интерфейсе ---- */
 const initialLetter = name => (String(name || 'Г').trim()[0] || 'Г').toUpperCase();
+function applyAvatar(el, name, src) {
+  if (src) { el.style.backgroundImage = `url("${src}")`; el.classList.add('has-photo'); el.textContent = ''; }
+  else { el.style.backgroundImage = ''; el.classList.remove('has-photo'); el.textContent = initialLetter(name); }
+}
+const avatarHTML = (name, src) => src ? `<span class="avatar has-photo" style="background-image:url('${src}')"></span>` : `<span class="avatar">${escapeHtml(initialLetter(name))}</span>`;
+async function fileToAvatar(file) {
+  if (!file || !/^image\//.test(file.type)) throw new Error('Выберите изображение');
+  if (file.size > 15 * 1024 * 1024) throw new Error('Файл слишком большой');
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('Не удалось открыть изображение')); i.src = url; });
+    const size = 192; const canvas = document.createElement('canvas'); canvas.width = canvas.height = size; const ctx = canvas.getContext('2d');
+    const side = Math.min(img.naturalWidth, img.naturalHeight); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+    ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  } finally { URL.revokeObjectURL(url); }
+}
+function setAvatar(data) {
+  getProfile().avatar = data; saveProfiles();
+  commit(data ? 'Фото обновлено' : 'Фото убрано', () => { state.avatar = data; }, { undo:false });
+  updateProfileUI(); renderSettings();
+}
+const prettyName = email => { const n = String(email).split('@')[0].replace(/[._\-+]+/g, ' ').trim(); return n ? n[0].toUpperCase() + n.slice(1, 24) : 'Друг'; };
 function updateProfileUI() {
   const profile = getProfile(); const name = state.userName || profile.name;
   const sub = cloud.session ? cloud.session.user.email : 'Локальный профиль';
-  qs('#profileName').textContent = name; qs('#profileSub').textContent = sub; qs('#profileAvatar').textContent = initialLetter(name);
-  qs('#setAvatar').textContent = initialLetter(name);
+  qs('#profileName').textContent = name; qs('#profileSub').textContent = sub;
+  applyAvatar(qs('#profileAvatar'), name, state.avatar); applyAvatar(qs('#setAvatar'), name, state.avatar); qs('#avatarRemove').hidden = !state.avatar;
   qs('#setAccountTitle').textContent = cloud.session ? cloud.session.user.email : 'Локальный профиль';
   qs('#setAccountLine').textContent = cloud.session ? 'Данные синхронизируются между устройствами' : (cloud.configured() ? 'Войдите, чтобы данные были на всех устройствах' : 'Данные хранятся только на этом устройстве');
   qs('#accountAction').textContent = cloud.session ? 'Выйти' : 'Войти';
@@ -736,7 +731,7 @@ function updateProfileUI() {
 }
 function onStateReplaced() {
   const profile = getProfile();
-  if (profile && profile.name !== state.userName) { profile.name = state.userName; saveProfiles(); }
+  if (profile && (profile.name !== state.userName || (profile.avatar || '') !== (state.avatar || ''))) { profile.name = state.userName; profile.avatar = state.avatar; saveProfiles(); }
   if (document.documentElement.dataset.theme !== state.theme) setTheme(state.theme, { persist:false });
   updateProfileUI(); invalidate(); scheduleRender();
   if (activePageId() === 'dashboard') qs('#pageTitle').innerHTML = greeting();
@@ -749,7 +744,7 @@ function renderSettings() {
   const cfg = LS.get('schetchik-cloud', {}) || {}; qs('#cloudUrl').value = cfg.url || SUPABASE_URL; qs('#cloudKey').value = cfg.key || SUPABASE_ANON_KEY;
   qs('#sqlBox').textContent = SUPABASE_SQL;
   qs('#pinBtnTitle').textContent = getProfile().pin ? 'Изменить или убрать PIN-код' : 'Установить PIN-код';
-  qs('#profileList').innerHTML = profiles.map(p => `<div class="profile-row ${p.id === profileId ? 'current' : ''}"><span class="avatar">${escapeHtml(initialLetter(p.name))}</span><div class="profile-text"><b>${escapeHtml(p.name)}${p.pin ? ' 🔒' : ''}</b><small>${escapeHtml(p.email || 'Локальный профиль')}</small></div>${p.id === profileId ? '<span class="current-chip">Текущий</span>' : `<button type="button" class="profile-open" data-switch-profile="${p.id}">Открыть</button>`}${profiles.length > 1 ? `<button type="button" class="profile-del" data-del-profile="${p.id}" aria-label="Удалить профиль ${escapeHtml(p.name)}" title="Удалить профиль">${icons.x}</button>` : ''}</div>`).join('');
+  qs('#profileList').innerHTML = profiles.map(p => `<div class="profile-row ${p.id === profileId ? 'current' : ''}">${avatarHTML(p.name, p.avatar)}<div class="profile-text"><b>${escapeHtml(p.name)}${p.pin ? ' 🔒' : ''}</b><small>${escapeHtml(p.email || 'Локальный профиль')}</small></div>${p.id === profileId ? '<span class="current-chip">Текущий</span>' : `<button type="button" class="profile-open" data-switch-profile="${p.id}">Открыть</button>`}${profiles.length > 1 ? `<button type="button" class="profile-del" data-del-profile="${p.id}" aria-label="Удалить профиль ${escapeHtml(p.name)}" title="Удалить профиль">${icons.x}</button>` : ''}</div>`).join('');
   setSyncStatus(syncStatus, syncDetail);
 }
 function openSettings(section) { renderSettings(); if (section === 'cloud') qs('#cloudDetails').open = true; if (section === 'ai') qs('#aiDetails').open = true; openModal('settingsModal'); }
@@ -808,7 +803,10 @@ async function afterAuth(session) {
     setTimeout(() => switchProfile(created.id), 700); return;
   }
   profile.cloudUserId = session.user.id; profile.email = session.user.email; saveProfiles(); cloud.setSession(session);
-  closeModals(); updateProfileUI(); toast('Вы вошли: ' + session.user.email); syncNow();
+  closeModals(); updateProfileUI(); toast('Вы вошли: ' + session.user.email);
+  await syncNow();
+  if (state.userName === 'Гость' && !state.userNameAt) { const name = prettyName(session.user.email); getProfile().name = name; saveProfiles(); state.userName = name; save(); updateProfileUI(); if (activePageId() === 'dashboard') qs('#pageTitle').innerHTML = greeting(); }
+  aiCheckAccess();
 }
 async function handleAuthHash() {
   const hash = location.hash;
@@ -966,6 +964,12 @@ function wireV9() {
     button.disabled = false; if (restore && button.textContent === 'Подождите…') button.textContent = label;
     delete event.target.dataset.busy;
   });
+  qs('#setAvatar').addEventListener('click', () => qs('#avatarFile').click());
+  qs('#avatarFile').addEventListener('change', async event => {
+    const file = event.target.files[0]; event.target.value = ''; if (!file) return;
+    try { setAvatar(await fileToAvatar(file)); } catch (error) { toast(error.message || 'Не удалось загрузить фото'); }
+  });
+  qs('#avatarRemove').addEventListener('click', () => setAvatar(''));
   qs('#pinBtn').addEventListener('click', openPinModal);
   qs('#newProfileBtn').addEventListener('click', () => { qs('#profileForm').reset(); openModal('profileModal'); });
   qs('#pinForm').addEventListener('submit', async event => {
@@ -1034,16 +1038,24 @@ async function recoverFromBackup() {
 }
 
 /* =====================================================================
-   v10 · ИИ-ПОМОЩНИК В ЗАМЕТКАХ (Google Gemini)
-   Ключ хранится только на этом устройстве (localStorage), в облако и в копии данных не попадает.
-   Вместе с вопросом уходит краткая сводка финансов из приложения — база данных и её ключи ИИ не передаются.
+   v11 · ИИ-ПОМОЩНИК (Google Gemini)
+   Два способа подключения:
+   1) свой ключ Gemini — хранится только на этом устройстве;
+   2) промокод — запросы идут через серверную функцию Supabase «gemini-proxy»,
+      ключ владельца лежит в секретах сервера и в браузер не попадает.
+   Вместе с вопросом уходит краткая сводка финансов — база данных и её ключи ИИ не передаются.
    ===================================================================== */
 const AI_DEFAULT_MODEL = 'gemini-3.5-flash';
+const AI_ACCESS_KEY = 'schetchik-ai-access';
 const AI_SYSTEM = 'Ты — личный помощник по финансам и решениям в приложении «Счётчик». Пользователь пишет заметки и идеи. Отвечай по-русски, дружелюбно и кратко (до 120 слов). Помогай принять решение: оцени идею с учётом его бюджета, планов и приоритетов, назови плюсы и риски, предложи конкретный следующий шаг. Опирайся на цифры из данных; если данных не хватает — так и скажи, ничего не выдумывай. Не обещай доходность и не давай юридических гарантий. Без вступлений и без пересказа заметки.';
 const aiCfg = () => ({ key:'', model:AI_DEFAULT_MODEL, auto:true, context:true, ...(LS.get('schetchik-ai', {}) || {}) });
+const aiHasAccess = () => LS.get(AI_ACCESS_KEY, false) === true;
+function aiMode() { if (aiCfg().key) return 'own'; if (cloud.session && aiHasAccess()) return 'promo'; return null; }
 const aiBusy = new Set(), aiDrafts = {}, aiErrors = {};
+const aiCollapsed = new Set(LS.get('schetchik-ai-collapsed', []) || []);
+const saveCollapsed = () => LS.set('schetchik-ai-collapsed', [...aiCollapsed]);
 
-/* Сводка финансов для ИИ: баланс, месяц, категории, планы по приоритету, покупки, последние операции */
+/* ---- Сводка финансов для ИИ ---- */
 function buildFinanceContext() {
   const all = liveTx(); const now = new Date(); const monthKey = isoDate(now).slice(0, 7);
   const month = all.filter(t => t.date.startsWith(monthKey));
@@ -1059,56 +1071,131 @@ function buildFinanceContext() {
     .map(t => `${t.date} ${t.type === 'income' ? '+' : '−'}${fmt(t.amount)} ${t.title} (${t.category})`).join('\n');
   const plans = activePlans().map((p, i) => `${i + 1}. ${p.title} — ${fmt(p.amount)}, ${p.kind === 'purchase' ? 'покупка' : 'платёж'}, срок ${p.date} (через ${daysUntil(p.date)} дн.), ${p.category}`).join('\n') || 'нет';
   const shopping = live(state.shopping).filter(i => !i.done).slice(0, 15).map(i => `${i.title}${i.amount ? ' — ' + fmt(i.amount) : ''}${i.priority === 'high' ? ' (важно)' : ''}`).join('; ') || 'нет';
-  return `Сегодня: ${isoDate(now)}\nБаланс (за всё время): ${fmt(balance)}\nЭтот месяц: доходы ${fmt(income)}, расходы ${fmt(expense)}; бюджет месяца ${fmt(state.budget)} (потрачено ${state.budget ? Math.round(expense / state.budget * 100) : 0}%)\nРасходы по категориям: ${categories || 'нет'}\nПрошлые месяцы: ${previous}\nПланы по приоритету (1 — самый важный):\n${plans}\nСписок покупок: ${shopping}\nПоследние операции:\n${recent || 'нет'}`;
+  const empty = !all.length && !activePlans().length ? '\n(Данных пока почти нет — пользователь только начал пользоваться приложением.)' : '';
+  return `Сегодня: ${isoDate(now)}\nБаланс (за всё время): ${fmt(balance)}\nЭтот месяц: доходы ${fmt(income)}, расходы ${fmt(expense)}; бюджет месяца ${fmt(state.budget)} (потрачено ${state.budget ? Math.round(expense / state.budget * 100) : 0}%)\nРасходы по категориям: ${categories || 'нет'}\nПрошлые месяцы: ${previous}\nПланы по приоритету (1 — самый важный):\n${plans}\nСписок покупок: ${shopping}\nПоследние операции:\n${recent || 'нет'}${empty}`;
 }
 
-async function callGemini(contents, system) {
-  const cfg = aiCfg(); if (!cfg.key) throw Object.assign(new Error('no key'), { code:'nokey' });
-  let response;
+/* ---- Запросы к Gemini: напрямую (свой ключ) или через сервер (промокод) ---- */
+async function geminiDirect(payload) {
+  const cfg = aiCfg(); let response;
   try {
     response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model || AI_DEFAULT_MODEL)}:generateContent`, {
-      method:'POST', headers:{ 'Content-Type':'application/json', 'x-goog-api-key':cfg.key },
-      body:JSON.stringify({ systemInstruction:{ parts:[{ text:system }] }, contents, generationConfig:{ temperature:0.7, maxOutputTokens:1400 } })
+      method:'POST', headers:{ 'Content-Type':'application/json', 'x-goog-api-key':cfg.key }, body:JSON.stringify(payload)
     });
   } catch { throw Object.assign(new Error('network'), { code:'network' }); }
   const data = await response.json().catch(() => null);
   if (!response.ok) { const error = new Error((data && data.error && data.error.message) || ('HTTP ' + response.status)); error.status = response.status; throw error; }
+  return data;
+}
+async function proxyCall(body) {
+  const { url, key } = cloud.cfg(); let token;
+  try { token = await cloud.token(); } catch (error) { throw Object.assign(new Error('auth'), { code:error.code === 'network' ? 'network' : 'auth' }); }
+  let response;
+  try { response = await fetch(url + '/functions/v1/gemini-proxy', { method:'POST', headers:{ apikey:key, Authorization:'Bearer ' + token, 'Content-Type':'application/json' }, body:JSON.stringify(body) }); }
+  catch { throw Object.assign(new Error('network'), { code:'network' }); }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = new Error('HTTP ' + response.status); error.status = response.status;
+    if (data && typeof data.error === 'string') error.code = data.error; else if (data && data.error && data.error.message) error.message = data.error.message;
+    else if (response.status === 404) error.code = 'no_function';
+    throw error;
+  }
+  return data;
+}
+async function callGemini(contents, system, extra = {}) {
+  const mode = aiMode(); if (!mode) throw Object.assign(new Error('no key'), { code:'nokey' });
+  const payload = { systemInstruction:{ parts:[{ text:system }] }, contents, generationConfig:{ temperature:0.7, maxOutputTokens:1400, ...extra } };
+  let data;
+  try { data = mode === 'own' ? await geminiDirect(payload) : await proxyCall({ action:'chat', payload }); }
+  catch (error) { if (error.code === 'no_access') LS.set(AI_ACCESS_KEY, false); throw error; }
   const parts = (((data || {}).candidates || [])[0] || {}).content;
   const text = ((parts && parts.parts) || []).map(p => p.text || '').join('').trim();
   if (!text) throw Object.assign(new Error('empty'), { code:'empty', blocked:!!(data && data.promptFeedback && data.promptFeedback.blockReason) });
   return text;
 }
 function aiErrorMessage(error) {
-  if (error.code === 'nokey') return 'Добавьте ключ Gemini в настройках.';
-  if (error.code === 'network') return 'Нет связи с Gemini. Проверьте интернет.';
-  if (error.code === 'empty') return error.blocked ? 'Gemini отказался отвечать на этот текст.' : 'Gemini вернул пустой ответ — попробуйте ещё раз.';
+  const code = error.code;
+  if (code === 'nokey') return 'Подключите помощника: введите промокод или свой ключ Gemini в настройках.';
+  if (code === 'network') return 'Нет связи. Проверьте интернет.';
+  if (code === 'auth') return 'Войдите в аккаунт, чтобы пользоваться помощником по промокоду.';
+  if (code === 'no_access') return 'Доступ по промокоду не найден — введите промокод в настройках.';
+  if (code === 'limit') return 'Суточный лимит помощника исчерпан — попробуйте завтра.';
+  if (code === 'no_function') return 'Сервер помощника не подключён (функция gemini-proxy не найдена).';
+  if (code === 'no_gemini_key') return 'На сервере не задан ключ Gemini (секрет GEMINI_API_KEY).';
+  if (code === 'empty') return error.blocked ? 'Gemini отказался отвечать на этот текст.' : 'Gemini вернул пустой ответ — попробуйте ещё раз.';
   if (error.status === 400 && /API key/i.test(error.message)) return 'Ключ Gemini не подошёл — проверьте, что он скопирован целиком.';
-  if (error.status === 400) return 'Gemini не принял запрос: ' + error.message.slice(0, 120);
+  if (error.status === 400) return 'Gemini не принял запрос: ' + String(error.message).slice(0, 120);
   if (error.status === 403) return 'Нет доступа: ключ ограничен или Gemini API выключен для проекта.';
   if (error.status === 404) return 'Модель не найдена — измените название модели в настройках помощника.';
   if (error.status === 429) return 'Лимит запросов Gemini исчерпан — подождите минуту.';
-  return 'Ошибка Gemini: ' + (error.message || error.status || '').toString().slice(0, 120);
+  return 'Ошибка помощника: ' + String(error.message || error.status || '').slice(0, 120);
 }
 
+/* ---- Промокод ---- */
+async function aiCheckAccess() {
+  if (!cloud.configured() || !cloud.session) return;
+  try { await proxyCall({ action:'status' }); LS.set(AI_ACCESS_KEY, true); }
+  catch (error) { if (error.code === 'no_access') LS.set(AI_ACCESS_KEY, false); }
+  if (qs('#promoStatus')) renderAISettings();
+}
+async function redeemPromo(code) {
+  if (!cloud.session) { toast('Сначала войдите по email — доступ привязывается к аккаунту'); openAccount('code'); return false; }
+  try { await proxyCall({ action:'redeem', code }); LS.set(AI_ACCESS_KEY, true); toast('Промокод принят — помощник подключён ✓'); renderAISettings(); return true; }
+  catch (error) {
+    if (error.code === 'bad_code') toast('Промокод не подошёл');
+    else toast(aiErrorMessage(error));
+    return false;
+  }
+}
+
+/* ---- Заметки: диалог ---- */
 function aiFormat(text) {
   return escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/^[*-]\s+/gm, '• ').replace(/\n/g, '<br>');
+}
+function aiMessagesHTML(item) {
+  const thread = item.thread || []; const busy = aiBusy.has(item.id); const error = aiErrors[item.id];
+  const messages = thread.map(m => `<div class="ai-msg ${m.r}">${m.r === 'ai' ? '<span class="ai-badge">ИИ</span>' : ''}<div class="ai-text">${aiFormat(m.t)}</div></div>`).join('');
+  const typing = busy ? '<div class="ai-msg ai"><span class="ai-badge">ИИ</span><div class="ai-text ai-typing">Думаю<span>.</span><span>.</span><span>.</span></div></div>' : '';
+  const failure = error ? `<div class="ai-error">${escapeHtml(error)} <button type="button" data-ai-retry="${item.id}">Повторить</button></div>` : '';
+  return messages + typing + failure;
+}
+function aiFormHTML(item) {
+  const busy = aiBusy.has(item.id);
+  return `<form class="ai-ask" data-ai-form="${item.id}"><input name="q" placeholder="Спросить помощника…" value="${escapeHtml(aiDrafts[item.id] || '')}" autocomplete="off" enterkeyhint="send" ${busy ? 'disabled' : ''} /><button type="submit" aria-label="Отправить" ${busy ? 'disabled' : ''}>${icons['arrow-up']}</button></form>`;
 }
 function aiThreadHTML(item) {
   const thread = item.thread || []; const busy = aiBusy.has(item.id); const error = aiErrors[item.id];
   if (!thread.length && !busy && !error) return '';
-  const messages = thread.map(m => `<div class="ai-msg ${m.r}">${m.r === 'ai' ? '<span class="ai-badge">ИИ</span>' : ''}<div class="ai-text">${aiFormat(m.t)}</div></div>`).join('');
-  const typing = busy ? '<div class="ai-msg ai"><span class="ai-badge">ИИ</span><div class="ai-text ai-typing">Думаю<span>.</span><span>.</span><span>.</span></div></div>' : '';
-  const failure = error ? `<div class="ai-error">${escapeHtml(error)} <button type="button" data-ai-retry="${item.id}">Повторить</button></div>` : '';
-  const form = `<form class="ai-ask" data-ai-form="${item.id}"><input name="q" placeholder="Спросить помощника…" value="${escapeHtml(aiDrafts[item.id] || '')}" autocomplete="off" enterkeyhint="send" ${busy ? 'disabled' : ''} /><button type="submit" aria-label="Отправить" ${busy ? 'disabled' : ''}>${icons['arrow-up']}</button></form>`;
-  return `<div class="ai-thread">${messages}${typing}${failure}${form}</div>`;
+  const collapsed = aiCollapsed.has(item.id) && !busy && !error;
+  const head = `<div class="ai-head"><span class="ai-title">Разговор с ИИ · ${thread.length}</span><span class="ai-head-actions"><button type="button" data-ai-open="${item.id}" title="Открыть разговор целиком">На весь экран</button><button type="button" data-ai-toggle="${item.id}">${collapsed ? 'Показать' : 'Скрыть разговор'}</button></span></div>`;
+  if (collapsed) return `<div class="ai-thread collapsed">${head}</div>`;
+  return `<div class="ai-thread">${head}<div class="ai-msgs">${aiMessagesHTML(item)}</div>${aiFormHTML(item)}</div>`;
 }
-function renderNotesIfActive() { if (activePageId() === 'notes') renderNotes(); }
+function renderNotesIfActive() { if (activePageId() === 'notes') renderNotes(); renderAiChatModal(); }
+
+let aiChatNoteId = null;
+function renderAiChatModal() {
+  if (!aiChatNoteId || !qs('#aiChatModal').classList.contains('open')) return;
+  const note = state.notes.find(n => n.id === aiChatNoteId && !n.deletedAt);
+  if (!note) { closeModals(); return; }
+  qs('#aiChatNote').textContent = note.text;
+  const body = qs('#aiChatBody'); const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 80;
+  body.innerHTML = `<div class="ai-msgs full">${aiMessagesHTML(note)}</div>`;
+  qs('#aiChatForm').innerHTML = aiFormHTML(note);
+  if (nearBottom || !body.dataset.ready) { body.scrollTop = body.scrollHeight; body.dataset.ready = '1'; }
+}
+function openAiChat(noteId) {
+  const note = state.notes.find(n => n.id === noteId && !n.deletedAt); if (!note) return;
+  aiChatNoteId = noteId; qs('#aiChatBody').dataset.ready = ''; openModal('aiChatModal'); renderAiChatModal();
+  setTimeout(() => { const input = qs('#aiChatForm input'); if (input && !input.disabled) input.focus(); }, 200);
+}
 
 async function askAI(noteId, question = '') {
   const cfg = aiCfg();
-  if (!cfg.key) { openSettings('ai'); toast('Добавьте ключ Gemini, чтобы помощник заработал'); return; }
+  if (!aiMode()) { openSettings('ai'); toast('Подключите помощника: промокод или ключ Gemini'); return; }
   const note = state.notes.find(n => n.id === noteId && !n.deletedAt); if (!note || aiBusy.has(noteId)) return;
   if (question) { note.thread = [...(note.thread || []), { r:'me', t:question, at:Date.now() }]; save(); }
+  aiCollapsed.delete(noteId); saveCollapsed();
   aiBusy.add(noteId); delete aiErrors[noteId]; renderNotesIfActive();
   const system = AI_SYSTEM + (cfg.context ? '\n\nДанные пользователя из приложения:\n' + buildFinanceContext() : '\n\n(Финансовые данные пользователя недоступны — отвечай только по тексту заметки.)');
   const thread = note.thread || [];
@@ -1118,22 +1205,119 @@ async function askAI(noteId, question = '') {
     const reply = await callGemini(contents, system);
     const fresh = state.notes.find(n => n.id === noteId && !n.deletedAt);
     if (fresh) { fresh.thread = [...(fresh.thread || []), { r:'ai', t:reply, at:Date.now() }]; save(); }
-    if (activePageId() !== 'notes') toast('Помощник ответил на заметку');
+    if (activePageId() !== 'notes' && !qs('#aiChatModal').classList.contains('open')) toast('Помощник ответил на заметку');
   } catch (error) { aiErrors[noteId] = aiErrorMessage(error); }
   aiBusy.delete(noteId); renderNotesIfActive();
 }
 function maybeAutoAI(noteId) {
-  const cfg = aiCfg(); if (!cfg.key || !cfg.auto) return;
+  const cfg = aiCfg(); if (!aiMode() || !cfg.auto) return;
   setTimeout(() => { const note = state.notes.find(n => n.id === noteId && !n.deletedAt); if (note && note.text.length >= 15 && !(note.thread || []).length) askAI(noteId); }, 250);
+}
+
+/* ---- ИИ-планировщик: из пары слов делает готовые планы ---- */
+const planner = { log:[], busy:false, error:'' };
+const PLANNER_SCHEMA = {
+  type:'OBJECT',
+  properties:{
+    reply:{ type:'STRING' },
+    plans:{ type:'ARRAY', items:{ type:'OBJECT', properties:{ title:{ type:'STRING' }, kind:{ type:'STRING', enum:['payment', 'purchase'] }, amount:{ type:'NUMBER' }, date:{ type:'STRING' }, category:{ type:'STRING' } }, required:['title', 'kind', 'amount', 'date', 'category'] } }
+  },
+  required:['reply', 'plans']
+};
+const plannerSystem = () => `Ты — планировщик расходов в приложении «Счётчик». Пользователь коротко описывает цель или трату, ты превращаешь это в готовые планы.
+Правила:
+- Если данных не хватает (сумма, срок, цель), задай 1–2 коротких вопроса в поле reply, а plans верни пустым. Не задавай лишнего: если можно разумно предположить (например, типичную цену), предположи и скажи об этом в reply.
+- Когда данных достаточно или пользователь согласился, верни конкретные plans: короткое название, kind ("payment" — обязательный платёж или взнос, "purchase" — покупка/желание), amount — целое число в рублях, date — YYYY-MM-DD (не раньше сегодняшней даты), category — одна из: ${expenseCategories().join(', ')}.
+- Для накоплений на цель, если пользователь просит или это уместно, разбей на ежемесячные взносы (kind "payment") с понятными датами.
+- Учитывай баланс, бюджет, уже существующие планы и их приоритет; не дублируй существующие планы. Планы расположи по приоритету: важное и срочное — первым.
+- reply — 1–3 коротких предложения по-русски: что понял и что предлагаешь. Не выдумывай данные пользователя.`;
+function parsePlannerJson(text) {
+  const clean = String(text).replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  let data; try { data = JSON.parse(clean); } catch { const m = clean.match(/\{[\s\S]*\}/); data = m ? JSON.parse(m[0]) : { reply:clean, plans:[] }; }
+  const plans = (Array.isArray(data.plans) ? data.plans : []).map(validatePlannedPlan).filter(Boolean).slice(0, 12);
+  return { reply:String(data.reply || 'Готово.').slice(0, 800), plans };
+}
+function validatePlannedPlan(p) {
+  if (!p || typeof p !== 'object') return null;
+  const title = String(p.title || '').trim().slice(0, 80); const amount = Math.round(Number(p.amount));
+  if (!title || !(amount > 0) || amount > 1e9) return null;
+  const kind = p.kind === 'payment' ? 'payment' : 'purchase';
+  let date = String(p.date || ''); const parsed = new Date(date + 'T12:00:00');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(parsed)) date = dateFromToday(-7);
+  else if (date < isoDate(new Date())) date = isoDate(new Date());
+  const category = expenseCategories().includes(p.category) ? p.category : (kind === 'payment' ? 'Другое' : 'Покупки');
+  return { title, kind, amount, date, category };
+}
+const plannerChips = ['Хочу накопить на отпуск', 'Купить ноутбук до конца года', 'Разложить платежи на месяц'];
+function plannerPlanHTML(p, logIndex, planIndex) {
+  const meta = iconFor(p.category);
+  return `<div class="proposal ${p.added ? 'added' : ''}"><span class="proposal-icon" style="color:${meta.color};background:${meta.bg}">${icons[meta.icon]}</span><div class="proposal-main"><b>${escapeHtml(p.title)}</b><small>${p.kind === 'purchase' ? 'Покупка' : 'Платёж'} · ${p.category} · ${dateDisplay(p.date)}</small></div><b class="proposal-amount">${fmt(p.amount)}</b><button type="button" class="proposal-add" data-planner-add="${logIndex}:${planIndex}" ${p.added ? 'disabled' : ''}>${p.added ? 'Добавлено ✓' : 'Добавить'}</button></div>`;
+}
+function renderPlanner() {
+  const log = qs('#plannerLog'); if (!log) return;
+  let html = '';
+  if (!planner.log.length) html = `<div class="ai-msg ai"><span class="ai-badge">ИИ</span><div class="ai-text">Опишите, что хотите запланировать, — хватит и пары слов. Если чего-то не хватит, я спрошу.</div></div><div class="planner-chips">${plannerChips.map(c => `<button type="button" data-planner-chip="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('')}</div>`;
+  planner.log.forEach((m, i) => {
+    if (m.r === 'me') html += `<div class="ai-msg me"><div class="ai-text">${escapeHtml(m.text)}</div></div>`;
+    else {
+      const unadded = m.plans.filter(p => !p.added).length;
+      html += `<div class="ai-msg ai"><span class="ai-badge">ИИ</span><div class="ai-text">${aiFormat(m.text)}${m.plans.length ? `<div class="proposals">${m.plans.map((p, j) => plannerPlanHTML(p, i, j)).join('')}${unadded > 1 ? `<button type="button" class="proposal-all" data-planner-add="${i}:all">Добавить все (${unadded})</button>` : ''}</div>` : ''}</div></div>`;
+    }
+  });
+  if (planner.busy) html += '<div class="ai-msg ai"><span class="ai-badge">ИИ</span><div class="ai-text ai-typing">Думаю<span>.</span><span>.</span><span>.</span></div></div>';
+  if (planner.error) html += `<div class="ai-error">${escapeHtml(planner.error)} <button type="button" data-planner-retry>Повторить</button></div>`;
+  log.innerHTML = html; log.scrollTop = log.scrollHeight;
+  const input = qs('#plannerForm input'); const send = qs('#plannerForm button'); if (input) input.disabled = planner.busy; if (send) send.disabled = planner.busy;
+  qs('#plannerReset').hidden = !planner.log.length;
+}
+function openPlanner() {
+  if (!aiMode()) { openSettings('ai'); toast('Подключите помощника: промокод или ключ Gemini'); return; }
+  openModal('plannerModal'); renderPlanner(); setTimeout(() => { const input = qs('#plannerForm input'); if (input && !input.disabled) input.focus(); }, 200);
+}
+async function plannerSend(text) {
+  text = String(text || '').trim(); if (!text || planner.busy) return;
+  if (!aiMode()) { toast('Подключите помощника в настройках'); return; }
+  if (text !== '__retry__') planner.log.push({ r:'me', text });
+  planner.busy = true; planner.error = ''; renderPlanner();
+  const cfg = aiCfg();
+  const system = plannerSystem() + '\n\nДанные пользователя из приложения:\n' + (cfg.context ? buildFinanceContext() : `Сегодня: ${isoDate(new Date())}\n(Финансовые данные пользователя недоступны.)`);
+  const raw = planner.log.map(m => ({ role:m.r === 'me' ? 'user' : 'model', text:m.r === 'me' ? m.text : (m.raw || m.text) }));
+  const contents = []; raw.forEach(m => { const last = contents[contents.length - 1]; if (last && last.role === m.role) last.parts[0].text += '\n\n' + m.text; else contents.push({ role:m.role, parts:[{ text:m.text }] }); });
+  try {
+    const answer = await callGemini(contents, system, { responseMimeType:'application/json', responseSchema:PLANNER_SCHEMA, temperature:0.5, maxOutputTokens:1800 });
+    const parsed = parsePlannerJson(answer);
+    planner.log.push({ r:'ai', text:parsed.reply, raw:answer, plans:parsed.plans.map(p => ({ ...p, added:false })) });
+  } catch (error) { planner.error = error instanceof SyntaxError ? 'Не удалось разобрать ответ — попробуйте переформулировать.' : aiErrorMessage(error); }
+  planner.busy = false; renderPlanner();
+}
+function plannerAdd(ref) {
+  const [logIndex, which] = ref.split(':'); const entry = planner.log[Number(logIndex)]; if (!entry || !entry.plans) return;
+  const list = which === 'all' ? entry.plans.filter(p => !p.added) : [entry.plans[Number(which)]].filter(p => p && !p.added);
+  if (!list.length) return;
+  commit(list.length > 1 ? `Добавлено планов: ${list.length}` : `План добавлен: «${list[0].title}»`, () => {
+    const base = nextTopPos(); const n = list.length; const stampId = Date.now().toString(36);
+    list.forEach((p, i) => state.plans.push({ id:`p${stampId}${i}`, kind:p.kind, title:p.title, category:p.category, amount:p.amount, date:p.date, done:false, pos:base - (n - 1) + i }));
+  });
+  list.forEach(p => { p.added = true; }); renderPlanner();
 }
 
 /* ---- Настройки помощника ---- */
 function renderAISettings() {
   const c = aiCfg(); qs('#aiKey').value = c.key; qs('#aiModel').value = c.model; qs('#aiAuto').checked = c.auto; qs('#aiContext').checked = c.context;
+  const status = qs('#promoStatus'); const access = aiHasAccess() && !!cloud.session;
+  status.hidden = !access && !c.key; status.textContent = c.key ? 'Работает через ваш ключ Gemini' : 'Доступ по промокоду активен ✓';
+  qs('#promoRow').hidden = !!c.key || access;
 }
 function wireAI() {
   const store = () => LS.set('schetchik-ai', { key:qs('#aiKey').value.trim(), model:qs('#aiModel').value.trim() || AI_DEFAULT_MODEL, auto:qs('#aiAuto').checked, context:qs('#aiContext').checked });
-  ['#aiKey', '#aiModel', '#aiAuto', '#aiContext'].forEach(sel => qs(sel).addEventListener('change', store));
+  ['#aiKey', '#aiModel', '#aiAuto', '#aiContext'].forEach(sel => qs(sel).addEventListener('change', () => { store(); renderAISettings(); }));
+  qs('#promoApply').addEventListener('click', async () => {
+    const input = qs('#promoCode'); const code = input.value.trim(); if (!code) return toast('Введите промокод');
+    const button = qs('#promoApply'); button.disabled = true;
+    if (await redeemPromo(code)) input.value = '';
+    button.disabled = false;
+  });
+  qs('#promoCode').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); qs('#promoApply').click(); } });
   qs('#aiTest').addEventListener('click', async () => {
     store(); const button = qs('#aiTest'); button.disabled = true;
     try { await callGemini([{ role:'user', parts:[{ text:'Ответь одним словом: готов?' }] }], 'Отвечай одним словом по-русски.'); toast('Помощник подключён ✓'); }
@@ -1141,6 +1325,9 @@ function wireAI() {
     button.disabled = false;
   });
   qs('#aiClear').addEventListener('click', () => { LS.del('schetchik-ai'); renderAISettings(); toast('Ключ удалён с этого устройства'); });
+  qs('#openPlanner').addEventListener('click', openPlanner);
+  qs('#plannerReset').addEventListener('click', () => { planner.log = []; planner.error = ''; renderPlanner(); });
+  qs('#plannerForm').addEventListener('submit', event => { event.preventDefault(); const input = event.target.elements.q; const text = input.value; input.value = ''; plannerSend(text); });
   document.addEventListener('input', event => { const form = event.target.closest && event.target.closest('[data-ai-form]'); if (form) aiDrafts[form.dataset.aiForm] = event.target.value; });
   document.addEventListener('submit', event => {
     const form = event.target.closest && event.target.closest('[data-ai-form]'); if (!form) return;
@@ -1151,9 +1338,14 @@ function wireAI() {
     let el;
     if ((el = event.target.closest('[data-ai-note]'))) {
       const note = state.notes.find(n => n.id === el.dataset.aiNote);
-      if (note && (note.thread || []).length) { const input = qs(`[data-ai-form="${note.id}"] input`); if (input) input.focus(); } else askAI(el.dataset.aiNote);
+      if (note && (note.thread || []).length) { aiCollapsed.delete(note.id); saveCollapsed(); renderNotes(); const input = qs(`[data-ai-form="${note.id}"] input`); if (input) input.focus(); } else askAI(el.dataset.aiNote);
     }
     if ((el = event.target.closest('[data-ai-retry]'))) askAI(el.dataset.aiRetry);
+    if ((el = event.target.closest('[data-ai-toggle]'))) { const id = el.dataset.aiToggle; if (aiCollapsed.has(id)) aiCollapsed.delete(id); else aiCollapsed.add(id); saveCollapsed(); renderNotes(); }
+    if ((el = event.target.closest('[data-ai-open]'))) openAiChat(el.dataset.aiOpen);
+    if ((el = event.target.closest('[data-planner-chip]'))) plannerSend(el.dataset.plannerChip);
+    if ((el = event.target.closest('[data-planner-add]'))) plannerAdd(el.dataset.plannerAdd);
+    if (event.target.closest('[data-planner-retry]')) { planner.error = ''; plannerSend('__retry__'); }
   });
 }
 
@@ -1195,7 +1387,7 @@ function renderPlansFull() {
   qs('#plansPendingCount').textContent = active.length;
   qs('#plansBudgetSum').textContent = `${fmt(sum(active))} ожидается`;
   qs('#plansSubtitle').textContent = active.length ? `${active.length} ${plural(active.length, ['план', 'плана', 'планов'])} · по приоритету` : 'Нет ближайших платежей';
-  qs('#plansFull').innerHTML = active.length ? active.map((item, index) => planRowHTML(item, index, active.length)).join('') : '<div class="empty-state"><span>✓</span>Ближайших трат нет. Нажмите «+» или скажите план голосом.</div>';
+  qs('#plansFull').innerHTML = active.length ? active.map((item, index) => planRowHTML(item, index, active.length)).join('') : '<div class="empty-state"><span>✓</span>Планов пока нет. Нажмите «Добавить план», скажите голосом или «Составить с ИИ».</div>';
 }
 function reorderPlan(planId, targetId, after = false) {
   const list = activePlans(); const moved = list.find(plan => plan.id === planId);
@@ -1811,11 +2003,11 @@ qs('#toggleCompleted').addEventListener('click', () => { const list = qs('#compl
 qs('#exportData').addEventListener('click', exportData);
 qs('#importData').addEventListener('click', () => qs('#importFile').click());
 qs('#importFile').addEventListener('change', e => { const file = e.target.files[0]; if (file) importData(file); e.target.value = ''; });
-qs('#resetData').addEventListener('click', () => { closeModals(); commit('Демо-данные восстановлены', () => { const keep = { userName:state.userName, theme:state.theme }; state = Object.assign(clone(initialState), keep); normalizeState(); }); });
+qs('#resetData').addEventListener('click', () => { closeModals(); commit('Данные очищены', () => { const keep = { userName:state.userName, userNameAt:state.userNameAt, theme:state.theme, themeAt:state.themeAt, avatar:state.avatar, avatarAt:state.avatarAt }; state = Object.assign(clone(initialState), keep); normalizeState(); }); });
 
 if ('serviceWorker' in navigator) {
   const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
-  navigator.serviceWorker.register('./service-worker.js?v=10').catch(() => {});
+  navigator.serviceWorker.register('./service-worker.js?v=11').catch(() => {});
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
 }
 

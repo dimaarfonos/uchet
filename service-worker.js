@@ -1,6 +1,6 @@
-const CACHE = 'schetchik-v10';
+const CACHE = 'schetchik-v11';
 const ASSETS = [
-  './', './index.html', './styles.css?v=10', './app.js?v=10', './manifest.webmanifest?v=10',
+  './', './index.html', './styles.css?v=11', './app.js?v=11', './manifest.webmanifest?v=11',
   './icon.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'
 ];
 
